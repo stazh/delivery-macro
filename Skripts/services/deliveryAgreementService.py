@@ -3,7 +3,7 @@ import os
 from typing import List, Dict, Any
 from datetime import datetime
 
-libs_path = os.path.join(os.path.dirname(__file__), '..', 'libs')
+libs_path = os.path.join(os.getcwd(), 'libs')
 
 if os.path.exists(libs_path):
     sys.path.append(libs_path)
@@ -21,7 +21,10 @@ except ImportError:
     print("Warnung: openpyxl nicht verfügbar.")
 
 def importDeliveryAgreementExcel() -> Dict[str, Any]:
-    wb = openpyxl.load_workbook("path_to_your_excel_file.xlsx")
+    base_dir = os.path.dirname(__file__)
+    excel_file = os.path.join(base_dir, "Ablieferungsmakro.xlsm")
+
+    wb = openpyxl.load_workbook(excel_file, keep_vba=True)
     sheet = wb["Angebot_aktuell"]
 
     data = {
@@ -44,11 +47,13 @@ def importDeliveryAgreementExcel() -> Dict[str, Any]:
 
 
 def createDeliveryAgreement(data: Dict[str, Any]) -> None:
-    doc = docx.Document("path_to_your_word_template.docx")
+    base_dir = os.path.dirname(__file__)
+    docx_file = os.path.join(base_dir, "/Vorlagen/Ablieferungsvereinbarung, Vorlage.dotx")
+    doc = docx.Document(docx_file)
 
     replacePlaceholdersInWord(doc, data)
     fillTablesInWord(doc, data)
-    doc.save("delivery_agreement_output.docx")
+    doc.save("Ablieferungsvereinbarung.docx")
 
 
 def replacePlaceholdersInWord(doc: docx.Document, data: Dict[str, Any]) -> None:

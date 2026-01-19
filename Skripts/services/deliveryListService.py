@@ -3,7 +3,7 @@ import sys
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
 
-libs_path = os.path.join(os.path.dirname(__file__), '..', 'libs')
+libs_path = os.path.join(os.getcwd(), 'libs')
 
 if os.path.exists(libs_path):
     sys.path.append(libs_path)
@@ -11,7 +11,7 @@ else:
     print(f"Warnung: Der Ordner '{libs_path}' wurde nicht gefunden. Bibliotheken aus diesem Ordner können nicht geladen werden.")
 
 try:
-    from openpyxl import Workbook, openpyxl
+    import openpyxl
 except ImportError as e:
     print(f"Fehler beim Importieren von openpyxl: {e}")
 
@@ -49,7 +49,9 @@ def importDeliveryListExcel() -> None:
     root = Tk()
     root.withdraw()
     
-    file = filedialog.askopenfilename(filetypes=[("Excel-Dateien", "*.xlsx")], title="Bitte Excel-Datei auswählen...")
+    base_dir = os.path.dirname(__file__)
+    file = os.path.join(base_dir, "Ablieferungsmakro.xlsm")
+
     if not file:
         messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.")
         return
@@ -59,7 +61,9 @@ def importDeliveryListExcel() -> None:
 
 def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -> None:
     try:
-        wb = openpyxl.load_workbook("path_to_template.xlsx")
+        base_dir = os.path.dirname(__file__)
+        exc_file = os.path.join(base_dir, "/Vorlagen/Ablieferungsverzeichnis, Vorlage.xltx")
+        wb = openpyxl.load_workbook(exc_file)
         ws = wb[TEMPLATE_SHEET_NAME]
         replace_placeholders_in_excel(ws, doc_props)
         insert_table_data(ws, table_data)

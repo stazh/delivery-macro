@@ -4,7 +4,7 @@ import re
 from tkinter import filedialog, messagebox, Tk
 from typing import Optional, List, Tuple, Dict, Any
 
-libs_path = os.path.join(os.path.dirname(__file__), '..', 'libs')
+libs_path = os.path.join(os.getcwd(), 'libs')
 
 if os.path.exists(libs_path):
     sys.path.append(libs_path)
