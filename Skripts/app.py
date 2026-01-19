@@ -1,5 +1,11 @@
+import sys
+import os
 import importlib
 import argparse
+from tkinter import messagebox
+
+services_path = os.path.join(os.path.dirname(__file__), 'services')
+sys.path.append(services_path)
 
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'importFileOfferWord', 'Importiert Aktenangebot (Word Datei) in die Excel tabelle (Angebot_aktuell)'),
@@ -31,6 +37,7 @@ def callFunction(command):
         print(f"Fehler: Der Befehl '{command}' ist nicht im Mapping definiert.")
 
 def main():
+    messagebox.showinfo("Main aufgerufen", "Dies ist eine einfache Nachricht.")
     parser = argparse.ArgumentParser(description="CLI ist für das Ablieferungsmakro und ruft die richtige Funktion der richtigen Datei auf.")
     parser.add_argument('command', type=str, help='Der Befehl, der die zugehörige Datei und Funktion bestimmt.')
     args = parser.parse_args()

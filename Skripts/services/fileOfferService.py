@@ -1,12 +1,15 @@
-from tkinter import filedialog, messagebox, Tk
 import sys
 import os
 import re
+from tkinter import filedialog, messagebox, Tk
 from typing import Optional, List, Tuple, Dict, Any
 
-script_dir = os.path.dirname(__file__)
-libs_dir = os.path.join(script_dir, '../libs')
-sys.path.append(libs_dir)
+libs_path = os.path.join(os.path.dirname(__file__), '..', 'libs')
+
+if os.path.exists(libs_path):
+    sys.path.append(libs_path)
+else:
+    print(f"Warnung: Der Ordner '{libs_path}' wurde nicht gefunden. Bibliotheken aus diesem Ordner können nicht geladen werden.")
 
 try:
     import xlwings as xw
@@ -18,28 +21,24 @@ try:
 except ImportError:
     print("Warnung: win32com nicht verfügbar. Word-Integration kann nicht verwendet werden.")
 
-# Konstanten
 TARGET_SHEET_NAME = "Angebot_aktuell"
 TEMPLATE_SHEET_NAME = "Vorlage"
 STEUERBOARD_SHEET_NAME = "Steuerboard"
 WORD_TABLE_INDEX = 1
 WORD_FIRST_DATA_ROW = 2
 
-# Spalten-Indizes
 COL_INHALT = 1
 COL_ZEITRAUM = 2
 COL_LFM = 3
 COL_GB = 4
 COL_MEDIUM = 5
 
-# Zeilen-Indizes für Metadaten
 ROW_BEHOERDE = 1
 ROW_AMT = 2
 ROW_ZUSTAENDIG = 3
 ROW_DATUM_ANGEBOT = 4
 COL_METADATA = 2
 
-# Daten-Startzeile
 START_DATA_ROW = 6
 
 def sheetExists(sheetName, workbook) -> bool:
@@ -351,6 +350,7 @@ def formatTitleRows(ws: Any, first_data_row: int = START_DATA_ROW) -> None:
 def createTemplate() -> None:
     root = Tk()
     root.withdraw()
+    messagebox.showinfo("Create Template aufgerufen", "Dies ist eine einfache Nachricht.")
 
     try:
         app = xw.App(visible=True)
