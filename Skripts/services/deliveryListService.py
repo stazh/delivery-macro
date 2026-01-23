@@ -2,23 +2,8 @@ import os
 import sys
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
-
-libs_path = os.path.join(os.getcwd(), 'libs')
-
-if os.path.exists(libs_path):
-    sys.path.append(libs_path)
-else:
-    print(f"Warnung: Der Ordner '{libs_path}' wurde nicht gefunden. Bibliotheken aus diesem Ordner können nicht geladen werden.")
-
-try:
-    import openpyxl
-except ImportError as e:
-    print(f"Fehler beim Importieren von openpyxl: {e}")
-
-try:
-    import docx
-except ImportError:
-    print("Warnung: docx nicht verfügbar.")
+import libs.openpyxl as openpyxl
+import libs.docx as docx
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
 TEMPLATE_SHEET_NAME = "Vorlage"

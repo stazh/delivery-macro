@@ -3,23 +3,8 @@ import os
 import re
 from tkinter import filedialog, messagebox, Tk
 from typing import Optional, List, Tuple, Dict, Any
-
-libs_path = os.path.join(os.getcwd(), 'libs')
-
-if os.path.exists(libs_path):
-    sys.path.append(libs_path)
-else:
-    print(f"Warnung: Der Ordner '{libs_path}' wurde nicht gefunden. Bibliotheken aus diesem Ordner können nicht geladen werden.")
-
-try:
-    import xlwings as xw
-except ImportError as e:
-    print(f"Fehler beim Importieren von xlwings: {e}")
-
-try:
-    from win32com.client import GetObject, Dispatch
-except ImportError:
-    print("Warnung: win32com nicht verfügbar. Word-Integration kann nicht verwendet werden.")
+import libs.xlwings as xw
+import libs.win32com.client as win32comClient
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
 TEMPLATE_SHEET_NAME = "Vorlage"
@@ -132,9 +117,9 @@ def importFileOffer(file_path: str, workbook) -> None:
 def copyTables(file_path: str, ws_target) -> None:
     try:
         try:
-            word_app = GetObject(None, "Word.Application")
+            word_app = win32comClient.GetObject(None, "Word.Application")
         except:
-            word_app = Dispatch("Word.Application")
+            word_app = win32comClient.Dispatch("Word.Application")
         
         word_doc = word_app.Documents.Open(file_path, ReadOnly=True)
         direction, office, responsible, offer_date = readMetaDataFromDoc(word_doc)

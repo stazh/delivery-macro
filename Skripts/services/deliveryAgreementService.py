@@ -2,23 +2,8 @@ import sys
 import os
 from typing import List, Dict, Any
 from datetime import datetime
-
-libs_path = os.path.join(os.getcwd(), 'libs')
-
-if os.path.exists(libs_path):
-    sys.path.append(libs_path)
-else:
-    print(f"Warnung: Der Ordner '{libs_path}' wurde nicht gefunden. Bibliotheken aus diesem Ordner können nicht geladen werden.")
-
-try:
-    import docx
-except ImportError as e:
-    print(f"Fehler beim Importieren von docx: {e}")
-
-try:
-    import openpyxl
-except ImportError:
-    print("Warnung: openpyxl nicht verfügbar.")
+import libs.openpyxl as openpyxl
+import libs.docx as docx
 
 def importDeliveryAgreementExcel() -> Dict[str, Any]:
     base_dir = os.path.dirname(__file__)

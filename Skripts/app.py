@@ -4,7 +4,14 @@ import importlib
 import argparse
 from tkinter import messagebox
 
-services_path = os.path.join(os.path.dirname(__file__), 'services')
+if hasattr(sys, 'frozen'):
+    # Wenn das Skript aus einer .pyz-Datei ausgeführt wird
+    zip_path = os.path.dirname(sys.executable)
+    services_path = os.path.join(zip_path, 'services')  # Ordner im Archiv
+else:
+    # Wenn das Skript in einer normalen Entwicklungsumgebung ausgeführt wird
+    services_path = os.path.join(os.path.dirname(__file__), 'services')
+
 sys.path.append(services_path)
 
 COMMANDS = {
@@ -22,7 +29,7 @@ def callFunction(command):
 
         try:
             print(f"Versuche, {fileName}.py zu importieren...")
-            module = importlib.import_module(f'services.{fileName}')
+            module = importlib.import_module(fileName)
             func = getattr(module, functionName)
             func()
         except ModuleNotFoundError as e:
