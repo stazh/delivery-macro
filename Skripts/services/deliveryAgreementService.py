@@ -1,9 +1,15 @@
 import sys
 import os
+from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
 from datetime import datetime
-import libs.openpyxl as openpyxl
-import libs.docx as docx
+
+try:
+    import openpyxl
+    import docx
+except ImportError as e:
+    messagebox.showerror("Import-Fehler", f"Fehler beim Importieren der Bibliotheken: {e}")
+    sys.exit(1)
 
 def importDeliveryAgreementExcel() -> Dict[str, Any]:
     base_dir = os.path.dirname(__file__)

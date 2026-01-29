@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: xlwings
-Version: 0.33.18
+Version: 0.33.20
 Summary: Make Excel fly: Interact with Excel from Python and vice versa.
 Home-page: https://www.xlwings.org
 Author: Zoomer Analytics LLC
@@ -27,9 +27,13 @@ Requires-Python: >=3.9
 Description-Content-Type: text/x-rst
 License-File: LICENSE.txt
 License-File: LICENSE_PRO.txt
+Requires-Dist: pywin32>=224; platform_system == "Windows"
 Requires-Dist: psutil>=2.0.0; platform_system == "Darwin"
 Requires-Dist: appscript>=1.0.1; platform_system == "Darwin"
-Requires-Dist: pywin32>=224; platform_system == "Windows"
+Provides-Extra: reports
+Requires-Dist: Jinja2; extra == "reports"
+Requires-Dist: pdfrw; extra == "reports"
+Requires-Dist: mistune; extra == "reports"
 Provides-Extra: all
 Requires-Dist: black; extra == "all"
 Requires-Dist: isort; extra == "all"
@@ -42,12 +46,12 @@ Requires-Dist: requests; extra == "all"
 Requires-Dist: pdfrw; extra == "all"
 Requires-Dist: pytest; extra == "all"
 Requires-Dist: mistune; extra == "all"
-Provides-Extra: reports
-Requires-Dist: Jinja2; extra == "reports"
-Requires-Dist: pdfrw; extra == "reports"
-Requires-Dist: mistune; extra == "reports"
-Provides-Extra: vba_edit
+Provides-Extra: vba-edit
 Requires-Dist: watchgod; extra == "vba-edit"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
 
 xlwings - Make Excel fly with Python!
 =====================================
@@ -120,5 +124,5 @@ Links
 * Quickstart: https://docs.xlwings.org/en/stable/quickstart.html
 * Documentation: https://docs.xlwings.org
 * Book (O'Reilly, 2021): https://www.xlwings.org/book
-* Video Course: https://training.xlwings.org/p/xlwings
+* Video Course: https://www.youtube.com/playlist?list=PL8T301Ai03xFcE5AFTnfSqnemXAh8cmMR
 * Source Code: https://github.com/xlwings/xlwings

@@ -3,8 +3,13 @@ import os
 import re
 from tkinter import filedialog, messagebox, Tk
 from typing import Optional, List, Tuple, Dict, Any
-import libs.xlwings as xw
-import libs.win32com.client as win32comClient
+
+try:
+    import xlwings as xw
+    import win32com.client as win32comClient
+except ImportError as e:
+    messagebox.showerror("Import-Fehler", f"Fehler beim Importieren der Bibliotheken: {e}")
+    sys.exit(1)
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
 TEMPLATE_SHEET_NAME = "Vorlage"
@@ -335,7 +340,6 @@ def formatTitleRows(ws: Any, first_data_row: int = START_DATA_ROW) -> None:
 def createTemplate() -> None:
     root = Tk()
     root.withdraw()
-    messagebox.showinfo("Create Template aufgerufen", "Dies ist eine einfache Nachricht.")
 
     try:
         app = xw.App(visible=True)

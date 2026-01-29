@@ -140,7 +140,9 @@ class AdjustDimensionsStage:
     def __call__(self, c):
         # the assumption is that value is 2-dimensional at this stage
 
-        if self.ndim is None:
+        if self.ndim in (None, "squeeze"):
+            # "squeeze" isn't documented yet, but could be used in case we want
+            # to change the default to "natural" at some point
             if len(c.value) == 1:
                 c.value = c.value[0][0] if len(c.value[0]) == 1 else c.value[0]
             elif len(c.value[0]) == 1:
@@ -155,6 +157,19 @@ class AdjustDimensionsStage:
                 c.value = [x[0] for x in c.value]
             else:
                 raise Exception("Range must be 1-by-n or n-by-1 when ndim=1.")
+
+        elif self.ndim == "natural":
+            # Single cell: return scalar
+            # Horizontal range (1xN): return 1D array
+            # Vertical range (Nx1) or 2D range (NxM): return 2D array
+            if len(c.value) == 1 and len(c.value[0]) == 1:
+                c.value = c.value[0][0]
+            elif len(c.value) == 1:
+                # Single row: return 1D array
+                c.value = c.value[0]
+            else:
+                # Multiple rows: keep as 2D (even if single column)
+                c.value = c.value
 
         # ndim = 2 is a no-op
         elif self.ndim != 2:
@@ -393,8 +408,33 @@ class JsonConverter(Converter):
             else:
                 return values
 
+        def strip_markdown_code_block(text):
+            """Remove markdown code block delimiters (```json```, etc.)"""
+            if not isinstance(text, str):
+                return text
+
+            text = text.strip()
+            # Remove opening code block marker (```json, ```JSON, or just ```)
+            if text.startswith("```"):
+                # Find the end of the first line (opening marker)
+                first_newline = text.find("\n")
+                if first_newline != -1:
+                    text = text[first_newline + 1 :]
+                else:
+                    # Just ``` without newline, remove it
+                    text = text[3:]
+
+            # Remove closing code block marker
+            if text.endswith("```"):
+                text = text[:-3]
+
+            return text.strip()
+
+        # Strip potential markdown code blocks before parsing
+        cleaned_value = strip_markdown_code_block(value)
+
         try:
-            result = json.loads(value)
+            result = json.loads(cleaned_value)
         except json.JSONDecodeError:
             return value
         result = deserialize_datetime(result)

@@ -2,8 +2,13 @@ import os
 import sys
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
-import libs.openpyxl as openpyxl
-import libs.docx as docx
+
+try:
+    import openpyxl
+    import docx
+except ImportError as e:
+    messagebox.showerror("Import-Fehler", f"Fehler beim Importieren der Bibliotheken: {e}")
+    sys.exit(1)
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
 TEMPLATE_SHEET_NAME = "Vorlage"

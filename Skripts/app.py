@@ -4,15 +4,15 @@ import importlib
 import argparse
 from tkinter import messagebox
 
-if hasattr(sys, 'frozen'):
-    # Wenn das Skript aus einer .pyz-Datei ausgeführt wird
-    zip_path = os.path.dirname(sys.executable)
-    services_path = os.path.join(zip_path, 'services')  # Ordner im Archiv
-else:
-    # Wenn das Skript in einer normalen Entwicklungsumgebung ausgeführt wird
-    services_path = os.path.join(os.path.dirname(__file__), 'services')
+currentDir = os.path.dirname(os.path.abspath(__file__))
 
-sys.path.append(services_path)
+libs_path = os.path.join(currentDir, 'libs')
+services_path = os.path.join(currentDir, 'services')
+
+if os.path.exists(libs_path):
+    sys.path.append(libs_path)
+if os.path.exists(services_path):
+    sys.path.append(services_path)
 
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'importFileOfferWord', 'Importiert Aktenangebot (Word Datei) in die Excel tabelle (Angebot_aktuell)'),
@@ -26,9 +26,7 @@ COMMANDS = {
 def callFunction(command):
     if command in COMMANDS:
         fileName, functionName, _ = COMMANDS[command]
-
         try:
-            print(f"Versuche, {fileName}.py zu importieren...")
             module = importlib.import_module(fileName)
             func = getattr(module, functionName)
             func()
