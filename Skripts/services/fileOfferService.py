@@ -2,7 +2,7 @@ import sys
 import os
 import re
 from tkinter import filedialog, messagebox, Tk
-from typing import Optional, List, Tuple, Dict, Any
+from typing import List, Tuple, Any
 
 try:
     import xlwings as xw
@@ -12,10 +12,8 @@ except ImportError as e:
     sys.exit(1)
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
-TEMPLATE_SHEET_NAME = "Vorlage"
-STEUERBOARD_SHEET_NAME = "Steuerboard"
-WORD_TABLE_INDEX = 1
-WORD_FIRST_DATA_ROW = 2
+WORD_TABLE_INDEX = 2
+WORD_FIRST_DATA_ROW = 3
 
 COL_INHALT = 1
 COL_ZEITRAUM = 2
@@ -23,13 +21,13 @@ COL_LFM = 3
 COL_GB = 4
 COL_MEDIUM = 5
 
-ROW_BEHOERDE = 1
-ROW_AMT = 2
-ROW_ZUSTAENDIG = 3
-ROW_DATUM_ANGEBOT = 4
+ROW_BEHOERDE = 6
+ROW_AMT = 7
+ROW_ZUSTAENDIG = 8
+ROW_DATUM_ANGEBOT = 11
 COL_METADATA = 2
 
-START_DATA_ROW = 6
+START_DATA_ROW = 2
 
 def sheetExists(sheetName, workbook) -> bool:
     try:
@@ -43,8 +41,9 @@ def importFileOfferWord() -> None:
     root.withdraw()
 
     try:
-        app = xw.App(visible=True)
-        workbook = app.books.active
+        app = xw.apps.active
+        app.visible = False
+        workbook = app.books['Ablieferungsmakro.xlsm']
     except Exception as e:
         print(f"Fehler beim Starten von Excel: {e}")
         messagebox.showerror("Excel Fehler", "Es konnte keine Excel-Anwendung gestartet werden.")
@@ -55,66 +54,15 @@ def importFileOfferWord() -> None:
         messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.")
         return
 
-    if sheetExists(TARGET_SHEET_NAME, workbook):
-        deleteTable = messagebox.askquestion(
-            "Tabellenblatt existiert",
-            f"Das Tabellenblatt '{TARGET_SHEET_NAME}' existiert bereits.\nSoll es gelöscht werden?",
-            icon='question', 
-            type='yesnocancel'
-        )
-        
-        if deleteTable == 'yes':
-            saveTable = messagebox.askquestion(
-                "Vorher speichern?", 
-                f"Möchten Sie das aktuelle '{TARGET_SHEET_NAME}'-Blatt speichern, bevor es gelöscht wird?",
-                icon='question', 
-                type='yesnocancel'
-            )
-
-            if saveTable == 'yes':
-                saveFilePath = filedialog.asksaveasfilename(defaultextension=".xlsm", filetypes=[("Excel Macro-Enabled Workbook", "*.xlsm")], title="Speicherort wählen...")
-                if not saveFilePath:
-                    messagebox.showinfo("Abbruch", "Speichern abgebrochen. Import wird nicht durchgeführt.")
-                    return
-
-                workbook.sheets[TARGET_SHEET_NAME].copy()
-                newWorkbook = app.books.active
-                newWorkbook.save(saveFilePath)
-                newWorkbook.close()
-
-                workbook.sheets[TARGET_SHEET_NAME].delete()
-
-            elif saveTable == 'no':
-                workbook.sheets[TARGET_SHEET_NAME].delete()
-
-            elif saveTable == 'cancel':
-                messagebox.showinfo("Abbruch", "Löschen abgebrochen. Import wird nicht durchgeführt.")
-                return
-        elif deleteTable == 'no':
-            pass
-        elif deleteTable == 'cancel':
-            messagebox.showinfo("Abbruch", "Import abgebrochen. Das Tabellenblatt bleibt unverändert.")
-            return
-
+    createTemplate()
     importFileOffer(file, workbook)
-
-    messagebox.showinfo("Information", "Import abgeschlossen. Bitte die rot markierten Felder ausfüllen und die hellblauen Felder prüfen.")
-    app.quit()
+    messagebox.showinfo("Information", "Import von Aktenangebotsformular abgeschlossen.")
 
 
 def importFileOffer(file_path: str, workbook) -> None:
     try:
-        template_sheet = workbook.sheets[TEMPLATE_SHEET_NAME]
-        steuerboard_index = workbook.sheets[STEUERBOARD_SHEET_NAME].index
-        
-        template_sheet.copy(before=workbook.sheets[STEUERBOARD_SHEET_NAME])
-        
-        ws_target = workbook.sheets[steuerboard_index - 1]
-        ws_target.name = TARGET_SHEET_NAME
-        
+        ws_target = workbook.sheets[TARGET_SHEET_NAME]
         copyTables(file_path, ws_target)
-        formatTitleRows(ws_target)
-        
     except Exception as e:
         messagebox.showerror("Fehler beim Import", f"Fehler beim Importieren der Datei: {e}")
 
@@ -141,12 +89,12 @@ def readMetaDataFromDoc(word_doc) -> Tuple[str, str, str, str]:
     try:
         full_text = word_doc.Content.text.replace('\r\n', '\r')
         meta_lines = full_text.split('\r')
-        
+
         direction = safeExtract(meta_lines, 1, "Direktion (Behörde):")
         office = safeExtract(meta_lines, 2, "Amtsstelle:")
         responsible = safeExtract(meta_lines, 3, "Zuständig in der Amtsstelle:")
         offer_date = safeExtract(meta_lines, 4, "Datum des Angebots:")
-        
+
         return direction, office, responsible, offer_date
     except Exception as e:
         print(f"Fehler beim Lesen von Metadaten: {e}")
@@ -169,7 +117,7 @@ def readWordTable(word_doc) -> List[List[str]]:
             return []
         
         word_table = word_doc.Tables(WORD_TABLE_INDEX)
-        
+
         if word_table.Rows.Count < WORD_FIRST_DATA_ROW:
             return []
         
@@ -178,11 +126,10 @@ def readWordTable(word_doc) -> List[List[str]]:
         
         for r in range(WORD_FIRST_DATA_ROW, word_table.Rows.Count + 1):
             row = []
-            for c in range(1, 6):  # 5 Spalten
+            for c in range(1, 6):
                 cell_text = safeGetCellText(word_table, r, c)
                 row.append(cell_text)
             tmp.append(row)
-        
         return tmp
     except Exception as e:
         print(f"Fehler beim Lesen der Word-Tabelle: {e}")
@@ -219,42 +166,43 @@ def cleanString(text: Any) -> str:
 def writeDataToSheet(ws_target, data_array: List[List[str]], 
                     direction: str, office: str, responsible: str, offer_date: str) -> None:
     try:
-        ws_target.range(f'B{ROW_BEHOERDE}').value = direction
-        ws_target.range(f'B{ROW_AMT}').value = office
-        ws_target.range(f'B{ROW_ZUSTAENDIG}').value = responsible
-        ws_target.range(f'B{ROW_DATUM_ANGEBOT}').value = offer_date
-        
+        ws_target.range(f'O{ROW_BEHOERDE}').value = direction
+        ws_target.range(f'O{ROW_AMT}').value = office
+        ws_target.range(f'O{ROW_ZUSTAENDIG}').value = responsible
+        ws_target.range(f'O{ROW_DATUM_ANGEBOT}').value = offer_date
         if not data_array:
             return
         
         out = []
         for row in data_array:
             if not any(row[1:5]):
-                out.append([row[0], "", "", "", ""]) 
-            else:
-                lfm_value = ""
-                if row[2] and row[2].strip():
-                    lfm_value = convertToLfm(row[2])
-                
-                gb_value = ""
-                if row[3] and row[3].strip():
-                    gb_value = convertToGb(row[3])
-                
-                medium_value = row[4].replace(",", ";") if row[4] else ""
-                
-                out.append([
-                    row[0],
-                    row[1],
-                    lfm_value,
-                    gb_value,
-                    medium_value
-                ])
+                continue
+
+            lfm_value = ""
+            if row[2] and row[2].strip():
+                lfm_value = convertToLfm(row[2])
+            
+            gb_value = ""
+            if row[3] and row[3].strip():
+                gb_value = convertToGb(row[3])
+            
+            medium_value = row[4].replace(",", ";") if row[4] else ""
+            
+            out.append([
+                row[0],
+                row[1],
+                lfm_value,
+                gb_value,
+                medium_value
+            ])
+        
         if out:
             end_row = START_DATA_ROW + len(out) - 1
             ws_target.range(f'A{START_DATA_ROW}:E{end_row}').value = out
     
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}")
+
 
 
 def convertToLfm(value: Any) -> float:
@@ -315,103 +263,34 @@ def convertWithUnits(value: Any, unit_type: str) -> float:
         return ""
 
 
-def formatTitleRows(ws: Any, first_data_row: int = START_DATA_ROW) -> None:
-    try:
-        last_row = ws.cells.last_cell.row
-        
-        for r in range(first_data_row, last_row + 1):
-            check_range = ws.range(f'B{r}:E{r}')
-            
-            non_empty_count = 0
-            for cell in check_range:
-                if cell.value:
-                    non_empty_count += 1
-            
-            if non_empty_count == 0:
-                title_color = ws.range(f'A{r}').color
-                
-                for c in range(1, 13):
-                    if c not in [6, 8]:
-                        ws.cells(r, c).color = title_color
-    
-    except Exception as e:
-        print(f"Fehler beim Formatieren: {e}")
-
+#TODO: Copied Sheet shouldnt lose his functionality
 def createTemplate() -> None:
-    root = Tk()
-    root.withdraw()
-
     try:
-        app = xw.App(visible=True)
-        workbook = app.books.active
-    except Exception as e:
-        print(f"Fehler beim Starten von Excel: {e}")
-        messagebox.showerror("Excel Fehler", "Es konnte keine Excel-Anwendung gestartet werden.")
-        return
-
-    if sheetExists(TARGET_SHEET_NAME, workbook):
-        deleteTable = messagebox.askquestion(
-            f"Blatt '{TARGET_SHEET_NAME}' gefunden",
-            f"Das Tabellenblatt '{TARGET_SHEET_NAME}' existiert bereits.\n"
-            f"Soll es gelöscht werden, um ein neues leeres Blatt zu erstellen?",
-            icon='question', 
-            type='yesnocancel'
-        )
+        app = xw.apps.active
+        app.visible = False
+        workbook = app.books['Ablieferungsmakro.xlsm']
         
-        if deleteTable == 'yes':
-            saveTable = messagebox.askquestion(
-                "Vorher speichern?", 
-                f"Möchten Sie das aktuelle '{TARGET_SHEET_NAME}'-Blatt speichern, bevor es gelöscht wird?",
-                icon='question', 
-                type='yesnocancel'
-            )
-
-            if saveTable == 'yes':
-                saveFilePath = filedialog.asksaveasfilename(
-                    initialfile=f"{TARGET_SHEET_NAME}.xlsm",
-                    defaultextension=".xlsm", 
-                    filetypes=[("Excel Macro-Enabled Workbook (*.xlsm)", "*.xlsm")], 
-                    title="Bitte Speicherort und Dateiname wählen..."
-                )
-                
-                if not saveFilePath:
-                    messagebox.showinfo("Abbruch", "Speichervorgang abgebrochen. Vorgang wird nicht ausgeführt.")
-                    app.quit()
-                    return
-
-                workbook.sheets[TARGET_SHEET_NAME].copy()
-                newWorkbook = app.books.active
-                newWorkbook.save(saveFilePath)
-                newWorkbook.close()
-
-                workbook.sheets[TARGET_SHEET_NAME].delete()
-
-            elif saveTable == 'no':
-                workbook.sheets[TARGET_SHEET_NAME].delete()
-
-            elif saveTable == 'cancel':
-                messagebox.showinfo("Abbruch", "Löschen abgebrochen. Kein neues Blatt wird erstellt.")
-                app.quit()
-                return
-                
-        elif deleteTable == 'no':
-            messagebox.showinfo("Information", "Das Blatt bleibt erhalten. Es wird kein neues leeres Blatt erstellt.")
-            app.quit()
+        stammdaten_workbook = xw.Book('./Daten/Stammdaten.xlsx')
+        dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade']
+        
+        template_path = dateipfade_sheet.range('B4').value
+        stammdaten_workbook.close()
+        
+        if not template_path or not os.path.exists(template_path):
+            messagebox.showerror("Fehler", f"Der angegebene Pfad '{template_path}' ist ungültig.")
             return
-            
-        elif deleteTable == 'cancel':
-            messagebox.showinfo("Abbruch", "Vorgang abgebrochen.")
-            app.quit()
-            return
+        
+        template_workbook = xw.Book(template_path)
+        template_sheet = template_workbook.sheets[TARGET_SHEET_NAME]
 
-    createEmptyTemplate(workbook)
-    
-    messagebox.showinfo("Fertig", f"Neues leeres '{TARGET_SHEET_NAME}'-Blatt wurde erstellt.")
-    app.quit()
+        template_sheet.copy(after=workbook.sheets[-1])
+        
+        template_workbook.close()
 
+        workbook.save()
 
-def createEmptyTemplate(workbook) -> None:
-    try:
-        workbook.sheets.add(name=TARGET_SHEET_NAME)
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Erstellen des neuen Blattes: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}")
+        app.quit()
+        sys.exit(1)
+

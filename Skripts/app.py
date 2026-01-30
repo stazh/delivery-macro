@@ -9,11 +9,6 @@ currentDir = os.path.dirname(os.path.abspath(__file__))
 libs_path = os.path.join(currentDir, 'libs')
 services_path = os.path.join(currentDir, 'services')
 
-if os.path.exists(libs_path):
-    sys.path.append(libs_path)
-if os.path.exists(services_path):
-    sys.path.append(services_path)
-
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'importFileOfferWord', 'Importiert Aktenangebot (Word Datei) in die Excel tabelle (Angebot_aktuell)'),
     'create-template': ('fileOfferService', 'createTemplate', 'Erstellt eine Excel Vorlage (Angebot_aktuell)'),
@@ -42,10 +37,15 @@ def callFunction(command):
         print(f"Fehler: Der Befehl '{command}' ist nicht im Mapping definiert.")
 
 def main():
-    parser = argparse.ArgumentParser(description="CLI ist für das Ablieferungsmakro und ruft die richtige Funktion der richtigen Datei auf.")
-    parser.add_argument('command', type=str, help='Der Befehl, der die zugehörige Datei und Funktion bestimmt.')
-    args = parser.parse_args()
-    callFunction(args.command)
+    try:
+        sys.path.append(services_path)
+        sys.path.append(libs_path)
+        parser = argparse.ArgumentParser(description="CLI ist für das Ablieferungsmakro und ruft die richtige Funktion der richtigen Datei auf.")
+        parser.add_argument('command', type=str, help='Der Befehl, der die zugehörige Datei und Funktion bestimmt.')
+        args = parser.parse_args()
+        callFunction(args.command)
+    except Exception as e:
+        messagebox.showerror("Fehler", f'{e}')
 
 if __name__ == '__main__':
     main()
