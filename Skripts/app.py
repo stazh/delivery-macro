@@ -26,15 +26,13 @@ def callFunction(command):
             func = getattr(module, functionName)
             func()
         except ModuleNotFoundError as e:
-            print(f"Fehler: Die Datei '{fileName}.py' wurde im services-Ordner nicht gefunden.")
-            print(f"Details: {e}")
+            messagebox.showerror("Fehler", f"Die Datei '{fileName}.py' wurde im services-Ordner nicht gefunden. Error: {e}")
         except AttributeError as e:
-            print(f"Fehler: Die Funktion '{functionName}' wurde in der Datei '{fileName}.py' nicht gefunden.")
-            print(f"Details: {e}")
+            messagebox.showerror("Fehler", f"Die Funktion '{functionName}' wurde in der Datei '{fileName}.py' nicht gefunden. Error: {e}")
         except Exception as e:
-            print(f"Es ist ein Fehler aufgetreten: {e}")
+            messagebox.showerror("Fehler", f"Es ist ein Fehler aufgetreten: {e}")
     else:
-        print(f"Fehler: Der Befehl '{command}' ist nicht im Mapping definiert.")
+        messagebox.showerror("Fehler", f"Der Befehl '{command}' ist nicht im Mapping definiert.")
 
 def main():
     try:

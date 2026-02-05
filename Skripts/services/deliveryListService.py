@@ -68,22 +68,19 @@ def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -
             return
 
         wb = openpyxl.load_workbook(exc_file)
-        temp_path = os.path.abspath("Ablieferungsverzeichnis.xlsx")
-        wb.save(temp_path)
+        path = os.path.abspath("Ablieferungsverzeichnis.xlsx")
+        wb.save(path)
         workbook = xw.Book('./Ablieferungsverzeichnis.xlsx')
         ws = workbook.sheets['Ablieferungsverzeichnis']
         replace_placeholders_in_excel(ws, doc_props)
         insert_table_data(ws, table_data)
-
-        app = xw.App(visible=True)
-        app.books.open(temp_path)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}")
 
 
 
-
+#TODO: Funktion zum Einfügen der Daten in die Excel‑Datei erstellen, z.B. insert_table_data(ws, table_data)
 def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     #doc = docx.Document(file_path)
     
@@ -115,10 +112,10 @@ def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
         "AmtName": ws.range("O7").value or "",
         "AmtPName": ws.range("O8").value or "",
         "ÜbernDatum": ws.range("O12").value or "",
-        "AngLfm": ws.range("O2").value or "",
-        "ÜbernLfm": ws.range("O3").value or "",
-        "AngGB": ws.range("O4").value or "",
-        "ÜbernGB": ws.range("O5").value or ""
+        "AngLfm": "0" if ws.range("O2").value == 0.0 else str(ws.range("O2").value),
+        "ÜbernLfm": "0" if ws.range("O3").value == 0.0 else str(ws.range("O3").value),
+        "AngGB": "0" if ws.range("O4").value == 0.0 else str(ws.range("O4").value),
+        "ÜbernGB": "0" if ws.range("O5").value == 0.0 else str(ws.range("O5").value)
     }
 
     table_data = []
@@ -152,16 +149,16 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
     ]
 
     for placeholder, value in zip(placeholders, values):
-        for row in ws.iter_rows():
+        for row in ws.range('A1:G20'):
             for cell in row:
-                cell_val = str(cell.value) if cell.value is not None else ""
-                if placeholder in cell_val:
-                    cell.value = cell_val.replace(placeholder, value)
-
+                if cell.value and isinstance(cell.value, str):
+                    if placeholder in cell.value:
+                        cell.value = cell.value.replace(placeholder, value)
 
 
 def insert_table_data(ws, table_data: List[List[str]]) -> None:
     row_start = 24
     for row in table_data:
-        ws.append(row)
+        cell_range = ws.range(f'B{row_start}:F{row_start}')
+        cell_range.value = row
         row_start += 1
