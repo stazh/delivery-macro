@@ -1,7 +1,9 @@
 import os
 import sys
+import re
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
+import win32com.client as win32
 
 try:
     import openpyxl
@@ -79,10 +81,10 @@ def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}")
 
 
-
-#TODO: Funktion zum Einfügen der Daten in die Excel‑Datei erstellen, z.B. insert_table_data(ws, table_data)
 def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
-    #doc = docx.Document(file_path)
+    word = win32.DispatchEx("Word.Application") 
+    word.visible = False
+    word.Documents.Open(file_path)
     
     doc_props = {
         "DirName": "Beispiel Direktion",
@@ -96,13 +98,53 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     }
     
     table_data = []
-    #for table in doc.tables:
-        #for row in table.rows:
-            #row_data = [cell.text.strip() for cell in row.cells]
-            #table_data.append(row_data)
+    raw_data = []
+    doc = word.ActiveDocument
+    table = doc.Tables[2]
+
+    for i in range(2, table.Rows.Count + 1):
+        row = table.Rows(i)
+        #TODO: Zeilenumbruch entfernen, damit die Daten korrekt in die Excel Tabelle eingefügt werden können
+        first_column_data = row.Cells(1).Range.Text.strip()
+        third_column_data = row.Cells(3).Range.Text.strip()
+        raw_data.append([first_column_data, third_column_data])
     
+    messagebox.showerror("Fehler", f"{raw_data}")
+
+    table_data = convertWordTableData(raw_data)
+    word.Quit()
+
     return doc_props, table_data
 
+def convertWordTableData(raw_data: List[List[str]]) -> List[List[str]]:
+    table_data = []
+    for row in raw_data:
+        inhalt = row[0]
+        zeitraum = row[1]
+        lfm = "0"
+        gb = "0"
+        medium = ""
+
+        year_match = re.search(r'(\d{4})', row[0])
+        if year_match:
+            year_index = year_match.start()
+            parts = row[0][:year_index].strip(), row[0][year_index:].strip()
+                
+            inhalt = parts[0].removesuffix(',')
+            zeitraum = parts[1].split(',')[0]
+
+            medium_match = re.search(r'\((.*?)\)', row[0])
+            if medium_match:
+                medium = medium_match.group(1).strip()
+
+        if row[0].__contains__("Lfm"):
+            lfm = row[1].strip()
+        else:
+            gb = row[1].strip()
+        mark = "*" if gb != "0" else ""
+
+        table_data.append([inhalt, zeitraum, lfm, gb, medium, mark])
+    return table_data
 
 def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
     ws = workbook.sheets[TARGET_SHEET_NAME]
@@ -118,13 +160,19 @@ def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
         "ÜbernGB": "0" if ws.range("O5").value == 0.0 else str(ws.range("O5").value)
     }
 
+    #TODO: Daten richtig eintragen in der table_data Variable
     table_data = []
     rows = ws.range(f"A{START_DATA_ROW}:E{ws.cells.last_cell.row}").value
+    accepted_data_row = ws.range(f"J{START_DATA_ROW}:K{ws.cells.last_cell.row}").value
 
     if rows:
         for row in rows:
             if all(cell is None or str(cell).strip() == "" for cell in row):
                 continue
+            if row[3] > 0:
+                row.append("*")
+            else:
+                row.append("")
             table_data.append(row)
 
     return doc_props, table_data
@@ -159,6 +207,6 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
 def insert_table_data(ws, table_data: List[List[str]]) -> None:
     row_start = 24
     for row in table_data:
-        cell_range = ws.range(f'B{row_start}:F{row_start}')
+        cell_range = ws.range(f'B{row_start}:G{row_start}')
         cell_range.value = row
         row_start += 1
