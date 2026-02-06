@@ -19,87 +19,143 @@ def createDeliveryAgreement() -> None:
             messagebox.showerror("Fehler", f"Der angegebene Pfad zur Vorlage '{template_path}' ist ungültig.") 
             return 
         
-        data = importDeliveryAgreementExcel(workbook) 
+        data, table_data, declined_table_data = importDeliveryAgreementExcel(workbook)
         
-        copy_path = os.path.abspath(f"Ablieferungsvereinbarung_{datetime.now().strftime('%d.%m.%Y')}.docx") 
-        shutil.copy(template_path, copy_path) 
+        wordPath = os.path.abspath(f"Ablieferungsvereinbarung_{datetime.now().strftime('%d.%m.%Y')}.docx") 
+        shutil.copy(template_path, wordPath) 
         
-        if not os.path.exists(copy_path):
-            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {copy_path}")
+        if not os.path.exists(wordPath):
+            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {wordPath}")
             return
 
-        word = win32.Dispatch("Word.Application") 
+        word = win32.DispatchEx("Word.Application") 
         word.visible = True
-        doc = word.Documents.Open(copy_path)
-        replacePlaceholdersInDoc(doc, data)
-        output_path = os.path.abspath(f"Ablieferungsvereinbarung_{datetime.now().strftime('%d.%m.%Y')}.docx")
-        doc.SaveAs(output_path)
+        word.Documents.Open(wordPath)
+        replacePlaceholdersInDoc(word, data)
+        insertTableDataIntoWord(word, table_data, declined_table_data)
+        word.ActiveDocument.Save()
         
-        messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt und gespeichert.\nPfad: {output_path}")
+        messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt und gespeichert.\nPfad: {wordPath}")
 
     except Exception as e: 
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}") 
-        print(f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}")
 
 
 def importDeliveryAgreementExcel(workbook) -> dict:
     sheet = workbook.sheets['Angebot_aktuell']
+    
     data = {
-        "kuerz": str(sheet.range("O9").value).strip(),
-        "amt_mail": str(sheet.range("Z6").value).strip(),
-        "amt_zeichen": str(sheet.range("O7").value).strip(),
-        "amt_pname": str(sheet.range("O8").value).strip(),
-        "amt_name": str(sheet.range("O7").value).strip(),
-        "bes_datum": str(sheet.range("O10").value).strip(),
-        "ang_datum": str(sheet.range("O11").value).strip(),
-        "uebern_datum": str(sheet.range("O12").value).strip(),
-        "dir_name": str(sheet.range("O6").value).strip(),
-        "ang_lfm": str(sheet.range("O2").value).strip(),
-        "ang_gb": str(sheet.range("O4").value).strip(),
-        "uebern_lfm": str(sheet.range("O3").value).strip(),
-        "uebern_gb": str(sheet.range("O5").value).strip(),
+        "kuerz": sheet.range("O9").value if sheet.range("O9").value else "<StAZHKürz>",
+        "amt_mail": sheet.range("Z6").value if sheet.range("Z6").value else "<AmtMail>",
+        "amt_zeichen": sheet.range("O7").value if sheet.range("O7").value else "<AmtZeichen>",
+        "amt_pname": sheet.range("O8").value if sheet.range("O8").value else "<AmtPName>",
+        "amt_name": sheet.range("O7").value if sheet.range("O7").value else "<AmtName>",
+        "bes_datum": sheet.range("O10").value if sheet.range("O10").value else "<BesDatum>",
+        "ang_datum": sheet.range("O11").value if sheet.range("O11").value else "<AngDatum>",
+        "uebern_datum": sheet.range("O12").value if sheet.range("O12").value else "<ÜbernDatum>",
+        "dir_name": sheet.range("O6").value if sheet.range("O6").value else "<DirName>",
+        "ang_lfm": sheet.range("O2").value if sheet.range("O2").value else "0",
+        "ang_gb": sheet.range("O4").value if sheet.range("O4").value else "0",
+        "uebern_lfm": sheet.range("O3").value if sheet.range("O3").value else "0",
+        "uebern_gb": sheet.range("O5").value if sheet.range("O5").value else "0"
     }
-    return data
+
+    table_data = []
+    declined_table_data = []
+    row = 2
+    while sheet.range(f"A{row}").value:
+        inhalt = sheet.range(f"A{row}").value
+        zeitraum = sheet.range(f"B{row}").value
+        lfm = sheet.range(f"C{row}").value
+        gb = sheet.range(f"D{row}").value
+        medium = sheet.range(f"E{row}").value
+        bewertung = sheet.range(f"G{row}").value
+        begruendung = sheet.range(f"H{row}").value
+        begruendung_kommentar = sheet.range(f"I{row}").value
+        ueber_lfm = sheet.range(f"J{row}").value
+        ueber_gb = sheet.range(f"K{row}").value
+
+        aktengruppe = f"{inhalt}, {zeitraum},"
+        if lfm:
+            aktengruppe += f" {lfm} Lfm"
+        else:
+            aktengruppe += f" {gb} GB"
+        aktengruppe += f" ({medium})"
+
+        vereinbarung = f"{bewertung} \nBegründung: {begruendung} \n{begruendung_kommentar}"
+        uebernommene_menge = ueber_lfm if ueber_lfm else ueber_gb
+
+        if(begruendung == "Aufbewahrungsfrist noch laufend"):
+            declined_amount = lfm if lfm else gb
+            declined_table_data.append([aktengruppe, declined_amount])
+        else:
+            table_data.append([aktengruppe, vereinbarung, uebernommene_menge])
+
+        row += 1
+
+    return data, table_data, declined_table_data
 
 
-def replacePlaceholdersInDoc(doc, data: dict) -> None:
+def replacePlaceholdersInDoc(word, data: dict) -> None:
     try:
         replacements = {
-            "<StAZHKürz>": data.get("kuerz", "<StAZHKürz>"),
+            "<StAZHKürz>": data.get("kuerz"),
             "<ErstellungsDatum>": datetime.now().strftime("%d.%m.%Y"),
-            "<AmtZeichen>": data.get("amt_zeichen", "<AmtZeichen>"),
-            "<AmtPName>": data.get("amt_pname", "<AmtPName>"),
-            "<AmtMail>": data.get("amt_mail", "<AmtMail>"),
-            "<BesDatum>": data.get("bes_datum", "<BesDatum>"),
+            "<AmtZeichen>": data.get("amt_zeichen"),
+            "<AmtPName>": data.get("amt_pname"),
+            "<AmtMail>": data.get("amt_mail"),
+            "<BesDatum>": data.get("bes_datum"),
             "<AblJahr>": datetime.now().year,
-            "<AngDatum>": data.get("ang_datum", "<AngDatum>"),
-            "<AngLfm>": data.get("ang_lfm", "<AngLfm>"),
-            "<AngGB>": data.get("ang_gb", "<AngGB>"),
-            "<ÜbernLfm>": data.get("uebern_lfm", "<ÜbernLfm>"),
-            "<ÜbernGB>": data.get("uebern_gb", "<ÜbernGB>"),
-            "<AmtName>": data.get("amt_name", "<AmtName>"),
-            "<ÜbernDatum>": data.get("uebern_datum", "<ÜbernDatum>"),
-            "<DirName>": data.get("dir_name", "<DirName>")
+            "<AngDatum>": data.get("ang_datum"),
+            "<AngLfm>": data.get("ang_lfm"),
+            "<AngGB>": data.get("ang_gb"),
+            "<ÜbernLfm>": data.get("uebern_lfm"),
+            "<ÜbernGB>": data.get("uebern_gb"),
+            "<AmtName>": data.get("amt_name"),
+            "<ÜbernDatum>": data.get("uebern_datum"),
+            "<DirName>": data.get("dir_name")
         }
 
         for placeholder, value in replacements.items():
-            find_and_replace_in_word(doc, placeholder, value)
+            word.Selection.Find.Execute(placeholder, False, False, False, False, False, True, 1, False, value, 2)
+            
+        for section in word.ActiveDocument.Sections:
+            for footer in section.Footers:
+                footer.Range.find.Execute("<ErstellungsDatum>", False, False, False, False, False, True, 1, False, replacements["<ErstellungsDatum>"], 2)
+                footer.Range.find.Execute("<AmtZeichen>", False, False, False, False, False, True, 1, False, replacements["<AmtZeichen>"], 2)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter in Word: {e}")
-        print(f"Fehler beim Ersetzen der Platzhalter in Word: {e}")
 
-#TODO: Look why it doesnt replace any placeholders in word document
-def find_and_replace_in_word(doc, placeholder, value):
+
+def insertTableDataIntoWord(word, table_data, declined_table_data):
     try:
-        range = doc.Content
-        range.Find.ClearFormatting()
-        range.Find.Text = placeholder
-        range.Find.Replacement.Text = value
-        range.Find.Execute(Replace=2)
-        
-        print(f"Ersetzt '{placeholder}' mit '{value}'")
+        doc = word.ActiveDocument
+        acceptedFiles = doc.Tables[2]
+        declinedFiles = doc.Tables[3]
+        declinedText = "Die Aufbewahrungsfrist der folgenden Aktengruppen ist noch nicht abgelaufen. Diese müssen weiterhin aufbewahrt und bei Ablauf der Aufbewahrungsfrist erneut dem StAZH angeboten werden:"
+
+        for row in range(acceptedFiles.Rows.Count, 1, -1):
+            acceptedFiles.Rows(row).Delete()
+
+        for i, row in enumerate(table_data):
+            acceptedFiles.Rows.Add()
+            acceptedFiles.Cell(i + 2, 1).Range.Text = row[0]
+            acceptedFiles.Cell(i + 2, 2).Range.Text = row[1]
+            acceptedFiles.Cell(i + 2, 3).Range.Text = row[2] 
+
+        if len(declined_table_data) > 0:
+            for row in range(declinedFiles.Rows.Count, 1, -1):
+                declinedFiles.Rows(row).Delete()
+
+            for i, row in enumerate(declined_table_data):
+                declinedFiles.Rows.Add()
+                declinedFiles.Cell(i + 2, 1).Range.Text = row[0]
+                declinedFiles.Cell(i + 2, 2).Range.Text = row[1]
+        else:
+            declinedFiles.Delete()
+            word.Selection.Find.Execute(declinedText, False, False, False, False, False, True, 1, False, "", 2)
 
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter: {e}")
-        print(f"Fehler beim Ersetzen der Platzhalter: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")
+        print(f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")

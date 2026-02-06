@@ -45,7 +45,6 @@ def importFileOfferWord() -> None:
         app.visible = False
         workbook = app.books['Ablieferungsmakro.xlsm']
     except Exception as e:
-        print(f"Fehler beim Starten von Excel: {e}")
         messagebox.showerror("Excel Fehler", "Es konnte keine Excel-Anwendung gestartet werden.")
         return
 
@@ -97,7 +96,7 @@ def readMetaDataFromDoc(word_doc) -> Tuple[str, str, str, str]:
 
         return direction, office, responsible, offer_date
     except Exception as e:
-        print(f"Fehler beim Lesen von Metadaten: {e}")
+        messagebox.showerror("Fehler Word", f"Fehler beim Lesen von Metadaten: {e}")
         return "", "", "", ""
 
 
@@ -132,7 +131,7 @@ def readWordTable(word_doc) -> List[List[str]]:
             tmp.append(row)
         return tmp
     except Exception as e:
-        print(f"Fehler beim Lesen der Word-Tabelle: {e}")
+        messagebox.showerror("Fehler Word Table", f"Fehler beim Lesen der Word-Tabelle: {e}")
         return []
 
 
@@ -259,7 +258,7 @@ def convertWithUnits(value: Any, unit_type: str) -> float:
         return num * factor
     
     except Exception as e:
-        print(f"Fehler bei Einheiten-Konvertierung: {e}")
+        messagebox.showerror("Fehler Convert", f"Fehler bei Einheiten-Konvertierung: {e}")
         return ""
 
 
