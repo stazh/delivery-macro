@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+from datetime import datetime
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
 import win32com.client as win32
@@ -49,12 +50,12 @@ def importDeliveryListExcel() -> None:
 
     try:
         doc_props, table_data = readExcelData(workbook)
+        messagebox.showerror("Fehler", f"{table_data}")
+        messagebox.showerror("Fehler", f"{doc_props}")
         createDeliveryList(doc_props, table_data)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Verarbeiten der Abliefererdaten: {e}")
-
-
 
 def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -> None:
     try:
@@ -80,7 +81,6 @@ def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}")
 
-
 def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     word = win32.DispatchEx("Word.Application") 
     word.visible = False
@@ -91,10 +91,11 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         "AmtName": "Beispiel Amt",
         "AmtPName": "Beispiel Amtsperson",
         "ÜbernDatum": "01.01.2023",
-        "AngLfm": "100",
-        "ÜbernLfm": "200",
-        "AngGB": "500",
-        "ÜbernGB": "1000"
+        "AngLfm": "100", # Berechnen
+        "AngGB": "500", # Berechnen
+        "ÜbernLfm": "10",
+        "ÜbernGB": "20",
+        "AblNummer": "52625"
     }
     
     table_data = []
@@ -104,12 +105,9 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
 
     for i in range(2, table.Rows.Count + 1):
         row = table.Rows(i)
-        #TODO: Zeilenumbruch entfernen, damit die Daten korrekt in die Excel Tabelle eingefügt werden können
         first_column_data = row.Cells(1).Range.Text.strip()
         third_column_data = row.Cells(3).Range.Text.strip()
         raw_data.append([first_column_data, third_column_data])
-    
-    messagebox.showerror("Fehler", f"{raw_data}")
 
     table_data = convertWordTableData(raw_data)
     word.Quit()
@@ -125,22 +123,26 @@ def convertWordTableData(raw_data: List[List[str]]) -> List[List[str]]:
         gb = "0"
         medium = ""
 
-        year_match = re.search(r'(\d{4})', row[0])
+        year_match = re.search(r',\s*(\d{4}(?:\s*[-+]\s*\d{4})*)', row[0])
         if year_match:
             year_index = year_match.start()
             parts = row[0][:year_index].strip(), row[0][year_index:].strip()
-                
             inhalt = parts[0].removesuffix(',')
-            zeitraum = parts[1].split(',')[0]
+            zeitraum = parts[1].split(',')[1].strip()
 
-            medium_match = re.search(r'\((.*?)\)', row[0])
+            medium_match = re.search(r'\(([^)]+)\)(?!.*\()', row[0])
             if medium_match:
                 medium = medium_match.group(1).strip()
 
-        if row[0].__contains__("Lfm"):
-            lfm = row[1].strip()
+        row[1] = row[1].strip().replace('\n', '').replace('\r', '').replace('\x07', '')
+        if row[1].__contains__("/"):
+            parts = row[1].split('/')
+            lfm = parts[0]
+            gb = parts[1]
+        elif row[0].__contains__("Lfm"):
+            lfm = row[1]
         else:
-            gb = row[1].strip()
+            gb = row[1]
         mark = "*" if gb != "0" else ""
 
         table_data.append([inhalt, zeitraum, lfm, gb, medium, mark])
@@ -149,40 +151,49 @@ def convertWordTableData(raw_data: List[List[str]]) -> List[List[str]]:
 def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
     ws = workbook.sheets[TARGET_SHEET_NAME]
 
+    übern_datum_raw = ws.range("O12").value or ""
+    
+    if übern_datum_raw is not None and übern_datum_raw != "" and isinstance(übern_datum_raw, str):
+        übern_datum = datetime.strptime(übern_datum_raw, "%d.%m.%Y").strftime("%d.%m.%Y")
+    else:
+        übern_datum = ""
+
     doc_props = {
         "DirName": ws.range("O6").value or "",
         "AmtName": ws.range("O7").value or "",
         "AmtPName": ws.range("O8").value or "",
-        "ÜbernDatum": ws.range("O12").value or "",
+        "ÜbernDatum": übern_datum,
         "AngLfm": "0" if ws.range("O2").value == 0.0 else str(ws.range("O2").value),
         "ÜbernLfm": "0" if ws.range("O3").value == 0.0 else str(ws.range("O3").value),
         "AngGB": "0" if ws.range("O4").value == 0.0 else str(ws.range("O4").value),
-        "ÜbernGB": "0" if ws.range("O5").value == 0.0 else str(ws.range("O5").value)
+        "ÜbernGB": "0" if ws.range("O5").value == 0.0 else str(ws.range("O5").value),
+        "AblNummer": ws.range("O13").value or ""
     }
-
-    #TODO: Daten richtig eintragen in der table_data Variable
     table_data = []
     rows = ws.range(f"A{START_DATA_ROW}:E{ws.cells.last_cell.row}").value
     accepted_data_row = ws.range(f"J{START_DATA_ROW}:K{ws.cells.last_cell.row}").value
-
     if rows:
-        for row in rows:
+        for row, accepted_row in zip(rows, accepted_data_row):
             if all(cell is None or str(cell).strip() == "" for cell in row):
                 continue
-            if row[3] > 0:
+
+            lfm_accepted = accepted_row[0] if accepted_row[0] is not None else "0"
+            gb_accepted = accepted_row[1] if accepted_row[1] is not None else "0"
+            row[2] = lfm_accepted
+            row[3] = gb_accepted 
+
+            if gb_accepted != "0":
                 row.append("*")
             else:
                 row.append("")
+
             table_data.append(row)
-
     return doc_props, table_data
-
-
 
 def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
     placeholders = [
         "<DirName>", "<AmtName>", "<AmtPName>", "<ÜbernDatum>",
-        "<AngLfm>", "<AngGB>", "<ÜbernLfm>", "<ÜbernGB>"
+        "<AngLfm>", "<AngGB>", "<ÜbernLfm>", "<ÜbernGB>", "<AblNummer>"
     ]
     
     values = [
@@ -193,7 +204,8 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
         str(doc_props["AngLfm"]),
         str(doc_props["AngGB"]),
         str(doc_props["ÜbernLfm"]),
-        str(doc_props["ÜbernGB"])
+        str(doc_props["ÜbernGB"]),
+        str(doc_props["AblNummer"])
     ]
 
     for placeholder, value in zip(placeholders, values):

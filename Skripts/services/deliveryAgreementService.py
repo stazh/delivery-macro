@@ -63,30 +63,38 @@ def importDeliveryAgreementExcel(workbook) -> dict:
     table_data = []
     declined_table_data = []
     row = 2
-    while sheet.range(f"A{row}").value:
-        inhalt = sheet.range(f"A{row}").value
-        zeitraum = sheet.range(f"B{row}").value
-        lfm = sheet.range(f"C{row}").value
-        gb = sheet.range(f"D{row}").value
-        medium = sheet.range(f"E{row}").value
-        bewertung = sheet.range(f"G{row}").value
-        begruendung = sheet.range(f"H{row}").value
-        begruendung_kommentar = sheet.range(f"I{row}").value
-        ueber_lfm = sheet.range(f"J{row}").value
-        ueber_gb = sheet.range(f"K{row}").value
+    while sheet.range(f"A{row}").value: 
+        inhalt = sheet.range(f"A{row}").value or ''
+        zeitraum = sheet.range(f"B{row}").value or ''
+        lfm = sheet.range(f"C{row}").value or '0'
+        gb = sheet.range(f"D{row}").value or '0'
+        medium = sheet.range(f"E{row}").value or ''
+        bewertung = sheet.range(f"G{row}").value or ''
+        begruendung = sheet.range(f"H{row}").value or ''
+        begruendung_kommentar = sheet.range(f"I{row}").value or ''
+        ueber_lfm = sheet.range(f"J{row}").value or '0'
+        ueber_gb = sheet.range(f"K{row}").value or '0'
+        hasBoth =  True if gb != '0' and lfm != '0' else False
 
         aktengruppe = f"{inhalt}, {zeitraum},"
-        if lfm:
+        if hasBoth:
+            aktengruppe += f" {lfm} Lfm, {gb} GB"
+        elif lfm != '0':
             aktengruppe += f" {lfm} Lfm"
         else:
             aktengruppe += f" {gb} GB"
         aktengruppe += f" ({medium})"
 
         vereinbarung = f"{bewertung} \nBegründung: {begruendung} \n{begruendung_kommentar}"
-        uebernommene_menge = ueber_lfm if ueber_lfm else ueber_gb
+        if hasBoth:
+            uebernommene_menge = f'{ueber_lfm}/{ueber_gb}'
+        elif ueber_lfm != '0':
+            uebernommene_menge = ueber_lfm
+        else:
+            uebernommene_menge = ueber_gb
 
         if(begruendung == "Aufbewahrungsfrist noch laufend"):
-            declined_amount = lfm if lfm else gb
+            declined_amount = lfm if lfm != '0' else gb
             declined_table_data.append([aktengruppe, declined_amount])
         else:
             table_data.append([aktengruppe, vereinbarung, uebernommene_menge])
@@ -98,21 +106,22 @@ def importDeliveryAgreementExcel(workbook) -> dict:
 
 def replacePlaceholdersInDoc(word, data: dict) -> None:
     try:
+        messagebox.showerror("Fehler", f"{data}")
         replacements = {
             "<StAZHKürz>": data.get("kuerz"),
             "<ErstellungsDatum>": datetime.now().strftime("%d.%m.%Y"),
             "<AmtZeichen>": data.get("amt_zeichen"),
             "<AmtPName>": data.get("amt_pname"),
             "<AmtMail>": data.get("amt_mail"),
-            "<BesDatum>": data.get("bes_datum"),
+            "<BesDatum>": datetime.strptime(data.get("bes_datum"), "%d.%m.%Y"),
             "<AblJahr>": datetime.now().year,
-            "<AngDatum>": data.get("ang_datum"),
+            "<AngDatum>": datetime.strptime(data.get("ang_datum"), "%d.%m.%Y"),
             "<AngLfm>": data.get("ang_lfm"),
             "<AngGB>": data.get("ang_gb"),
             "<ÜbernLfm>": data.get("uebern_lfm"),
             "<ÜbernGB>": data.get("uebern_gb"),
             "<AmtName>": data.get("amt_name"),
-            "<ÜbernDatum>": data.get("uebern_datum"),
+            "<ÜbernDatum>": datetime.strptime(data.get("uebern_datum"), "%d.%m.%Y"),
             "<DirName>": data.get("dir_name")
         }
 
