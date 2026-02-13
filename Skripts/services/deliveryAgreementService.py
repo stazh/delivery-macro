@@ -1,4 +1,5 @@
 import os
+import re
 from tkinter import messagebox
 from datetime import datetime
 import xlwings as xw
@@ -11,9 +12,9 @@ def createDeliveryAgreement() -> None:
         app.visible = False 
         workbook = app.books['Ablieferungsmakro.xlsm'] 
         stammdaten_workbook = xw.Book('./Daten/Stammdaten.xlsx') 
-        dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade'] 
+        dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade']
+        contact_sheet = stammdaten_workbook.sheets['Kontakte'] 
         template_path = dateipfade_sheet.range('B1').value 
-        stammdaten_workbook.close() 
         
         if not template_path or not os.path.exists(template_path): 
             messagebox.showerror("Fehler", f"Der angegebene Pfad zur Vorlage '{template_path}' ist ungültig.") 
@@ -31,8 +32,9 @@ def createDeliveryAgreement() -> None:
         word = win32.DispatchEx("Word.Application") 
         word.visible = True
         word.Documents.Open(wordPath)
-        replacePlaceholdersInDoc(word, data)
+        replacePlaceholdersInDoc(word, data, contact_sheet)
         insertTableDataIntoWord(word, table_data, declined_table_data)
+        stammdaten_workbook.close() 
         word.ActiveDocument.Save()
         
         messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt und gespeichert.\nPfad: {wordPath}")
@@ -88,13 +90,15 @@ def importDeliveryAgreementExcel(workbook) -> dict:
         vereinbarung = f"{bewertung} \nBegründung: {begruendung} \n{begruendung_kommentar}"
         if hasBoth:
             uebernommene_menge = f'{ueber_lfm}/{ueber_gb}'
+            declined_amount = f'{lfm}/{gb}'
         elif ueber_lfm != '0':
             uebernommene_menge = ueber_lfm
+            declined_amount = lfm
         else:
             uebernommene_menge = ueber_gb
+            declined_amount = gb
 
         if(begruendung == "Aufbewahrungsfrist noch laufend"):
-            declined_amount = lfm if lfm != '0' else gb
             declined_table_data.append([aktengruppe, declined_amount])
         else:
             table_data.append([aktengruppe, vereinbarung, uebernommene_menge])
@@ -104,16 +108,28 @@ def importDeliveryAgreementExcel(workbook) -> dict:
     return data, table_data, declined_table_data
 
 
-def replacePlaceholdersInDoc(word, data: dict) -> None:
+def replacePlaceholdersInDoc(word, data: dict, contact_sheet) -> None:
     try:
-        messagebox.showerror("Fehler", f"{data}")
+        header_range = contact_sheet.range("A1:Z1")
+        stazh_name = "<StAZHName>"
+        stazh_mail = "<StAZHMail>"
+        stazh_nummer = "<StAZHNummer>"
+
+        for cell in header_range:
+            if data.get("kuerz").lower() in str(cell.value).lower():
+                column_index = cell.column
+                stazh_name = contact_sheet.cells(2, column_index).value or "<StAZHName>"
+                stazh_mail = contact_sheet.cells(3, column_index).value or "<StAZHMail>"
+                stazh_nummer = contact_sheet.cells(4, column_index).value or "<StAZHNummer>"
+                break
+
         replacements = {
             "<StAZHKürz>": data.get("kuerz"),
             "<ErstellungsDatum>": datetime.now().strftime("%d.%m.%Y"),
             "<AmtZeichen>": data.get("amt_zeichen"),
             "<AmtPName>": data.get("amt_pname"),
             "<AmtMail>": data.get("amt_mail"),
-            "<BesDatum>": datetime.strptime(data.get("bes_datum"), "%d.%m.%Y"),
+            "<BesDatum>": datetime.strftime(data.get("bes_datum"), "%d.%m.%Y"),
             "<AblJahr>": datetime.now().year,
             "<AngDatum>": datetime.strptime(data.get("ang_datum"), "%d.%m.%Y"),
             "<AngLfm>": data.get("ang_lfm"),
@@ -121,8 +137,11 @@ def replacePlaceholdersInDoc(word, data: dict) -> None:
             "<ÜbernLfm>": data.get("uebern_lfm"),
             "<ÜbernGB>": data.get("uebern_gb"),
             "<AmtName>": data.get("amt_name"),
-            "<ÜbernDatum>": datetime.strptime(data.get("uebern_datum"), "%d.%m.%Y"),
-            "<DirName>": data.get("dir_name")
+            "<ÜbernDatum>": datetime.strftime(data.get("uebern_datum"), "%d.%m.%Y"),
+            "<DirName>": data.get("dir_name"),
+            "<StAZHName>": stazh_name,
+            "<StAZHNummer>": stazh_mail,
+            "<StAZHMail>": stazh_nummer
         }
 
         for placeholder, value in replacements.items():
@@ -149,6 +168,8 @@ def insertTableDataIntoWord(word, table_data, declined_table_data):
 
         for i, row in enumerate(table_data):
             acceptedFiles.Rows.Add()
+            if re.search(r',\s*(\d{4})', row[0]):
+                row[0] = re.sub(r',\s*(\d{4})', r', \n\1', row[0])
             acceptedFiles.Cell(i + 2, 1).Range.Text = row[0]
             acceptedFiles.Cell(i + 2, 2).Range.Text = row[1]
             acceptedFiles.Cell(i + 2, 3).Range.Text = row[2] 
@@ -159,6 +180,8 @@ def insertTableDataIntoWord(word, table_data, declined_table_data):
 
             for i, row in enumerate(declined_table_data):
                 declinedFiles.Rows.Add()
+                if re.search(r',\s*(\d{4})', row[0]):
+                    row[0] = re.sub(r',\s*(\d{4})', r', \n\1', row[0])
                 declinedFiles.Cell(i + 2, 1).Range.Text = row[0]
                 declinedFiles.Cell(i + 2, 2).Range.Text = row[1]
         else:

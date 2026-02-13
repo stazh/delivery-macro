@@ -50,8 +50,6 @@ def importDeliveryListExcel() -> None:
 
     try:
         doc_props, table_data = readExcelData(workbook)
-        messagebox.showerror("Fehler", f"{table_data}")
-        messagebox.showerror("Fehler", f"{doc_props}")
         createDeliveryList(doc_props, table_data)
 
     except Exception as e:
@@ -86,28 +84,39 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     word.visible = False
     word.Documents.Open(file_path)
     
-    doc_props = {
-        "DirName": "Beispiel Direktion",
-        "AmtName": "Beispiel Amt",
-        "AmtPName": "Beispiel Amtsperson",
-        "ÜbernDatum": "01.01.2023",
-        "AngLfm": "100", # Berechnen
-        "AngGB": "500", # Berechnen
-        "ÜbernLfm": "10",
-        "ÜbernGB": "20",
-        "AblNummer": "52625"
-    }
-    
     table_data = []
     raw_data = []
     doc = word.ActiveDocument
     table = doc.Tables[2]
+    angLfm = 0
+    angGB = 0
 
     for i in range(2, table.Rows.Count + 1):
         row = table.Rows(i)
         first_column_data = row.Cells(1).Range.Text.strip()
         third_column_data = row.Cells(3).Range.Text.strip()
         raw_data.append([first_column_data, third_column_data])
+
+        lfm_match = re.search(r'(\d+(\.\d+)?)\s*Lfm', first_column_data)
+        gb_match = re.search(r'(\d+(\.\d+)?)\s*GB', first_column_data)
+        
+        if lfm_match:
+            angLfm += float(lfm_match.group(1))
+        
+        if gb_match:
+            angGB += float(gb_match.group(1))
+
+    doc_props = {
+        "DirName": "<DirName>",
+        "AmtName": "<AmtName>",
+        "AmtPName": "<AmtPName>",
+        "ÜbernDatum": "<ÜbernDatum>",
+        "AngLfm": angLfm,
+        "AngGB": angGB,
+        "ÜbernLfm": "",
+        "ÜbernGB": "",
+        "AblNummer": "<AblNummer>"
+    }
 
     table_data = convertWordTableData(raw_data)
     word.Quit()
@@ -153,10 +162,10 @@ def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
 
     übern_datum_raw = ws.range("O12").value or ""
     
-    if übern_datum_raw is not None and übern_datum_raw != "" and isinstance(übern_datum_raw, str):
-        übern_datum = datetime.strptime(übern_datum_raw, "%d.%m.%Y").strftime("%d.%m.%Y")
+    if übern_datum_raw is not None and übern_datum_raw != "":
+        übern_datum = datetime.strftime(übern_datum_raw, "%d.%m.%Y")
     else:
-        übern_datum = ""
+        übern_datum = "<ÜbernDatum>"
 
     doc_props = {
         "DirName": ws.range("O6").value or "",
