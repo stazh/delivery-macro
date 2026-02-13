@@ -293,3 +293,24 @@ def createTemplate() -> None:
         app.quit()
         sys.exit(1)
 
+# TODO: Beispiellösung für Dropdowns komplett implementieren
+def add_dropdown_to_excel():
+    # Excel öffnen
+    app = xw.App(visible=True)  # Visible=True, damit du die Änderungen siehst
+    wb = app.books.add()  # Neues Workbook erstellen
+    sheet = wb.sheets[0]  # Erstes Arbeitsblatt
+
+    # Beispiel-Daten für die Dropdown-Liste
+    dropdown_values = ["Option 1", "Option 2", "Option 3", "Option 4"]
+
+    # Die Zelle, in der die Dropdown-Liste erscheinen soll (z.B. A1)
+    cell = sheet.range('A1')
+
+    # Erstelle die Datenüberprüfung (Dropdown-Liste)
+    cell.api.Validation.Delete()  # Lösche vorherige Validierung
+    cell.api.Validation.Add(
+        Type=3,  # Typ 3 für eine Liste
+        AlertStyle=1,
+        Operator=1,
+        Formula1=",".join(dropdown_values)  # Die Werte für die Dropdown-Liste
+    )
