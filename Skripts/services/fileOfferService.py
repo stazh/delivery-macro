@@ -262,7 +262,6 @@ def convertWithUnits(value: Any, unit_type: str) -> float:
         return ""
 
 
-#TODO: Copied Sheet shouldnt lose his functionality
 def createTemplate() -> None:
     try:
         app = xw.apps.active
@@ -271,7 +270,16 @@ def createTemplate() -> None:
         
         stammdaten_workbook = xw.Book('./Daten/Stammdaten.xlsx')
         dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade']
+        select_fields = stammdaten_workbook.sheets['Auswahlfelder']
         
+        select_values = select_fields.range('A1:D1').value
+
+        complete_takeover_list = select_fields.range('A2:A11').value
+        partial_takeover_list = select_fields.range('B2:B5').value
+        no_takeover_list = select_fields.range('C2:C9').value
+        cant_be_offered_list = select_fields.range('D2').value
+        conditional_values = [complete_takeover_list, partial_takeover_list, no_takeover_list, cant_be_offered_list]
+
         template_path = dateipfade_sheet.range('B4').value
         stammdaten_workbook.close()
         
@@ -286,31 +294,60 @@ def createTemplate() -> None:
         
         template_workbook.close()
 
+        add_dropdown_to_excel(workbook, select_values, conditional_values)
         workbook.save()
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}")
-        app.quit()
-        sys.exit(1)
 
-# TODO: Beispiellösung für Dropdowns komplett implementieren
-def add_dropdown_to_excel():
-    # Excel öffnen
-    app = xw.App(visible=True)  # Visible=True, damit du die Änderungen siehst
-    wb = app.books.add()  # Neues Workbook erstellen
-    sheet = wb.sheets[0]  # Erstes Arbeitsblatt
 
-    # Beispiel-Daten für die Dropdown-Liste
-    dropdown_values = ["Option 1", "Option 2", "Option 3", "Option 4"]
+def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
+    try:
+        sheet = wb.sheets["Angebot_aktuell"]
+        g2_values_str = ";".join(values)
+        cell_range_g2 = sheet.range('G2:G6268')
+        cell_range_h2 = sheet.range('H2:H6268')
 
-    # Die Zelle, in der die Dropdown-Liste erscheinen soll (z.B. A1)
-    cell = sheet.range('A1')
+        cell_range_g2.api.Validation.Add(
+            Type=3,
+            AlertStyle=1,
+            Operator=1,
+            Formula1=g2_values_str
+        )
 
-    # Erstelle die Datenüberprüfung (Dropdown-Liste)
-    cell.api.Validation.Delete()  # Lösche vorherige Validierung
-    cell.api.Validation.Add(
-        Type=3,  # Typ 3 für eine Liste
-        AlertStyle=1,
-        Operator=1,
-        Formula1=",".join(dropdown_values)  # Die Werte für die Dropdown-Liste
-    )
+        start_row = 11
+        for i, cond_list in enumerate(conditional_values):
+            if not cond_list:
+                continue
+
+            name = values[i].replace(" ", "_").replace("-", "_")
+
+            vertical_list = [[val] for val in cond_list]
+
+            end_row = start_row + len(vertical_list) - 1
+            range_sheet = f"AZ{start_row}:AZ{end_row}"
+            sheet.range(range_sheet).value = vertical_list
+            range_address = sheet.range(range_sheet)
+
+            try:
+                if name in [n.name for n in wb.names]:
+                    wb.names[name].delete()
+                wb.names.add(name, range_address) #TODO: Prüfe, warum der Bereich nicht hinzugefügt wird und es feststeckt (keine Fehlermeldung erhalten)
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des benannten Bereichs '{name}': {e}")
+
+            start_row = end_row + 1
+
+        formula = "=INDIREKT(WECHSELN(G2;\" \";\"_\"))"
+
+        cell_range_h2.api.Validation.Add(
+            Type=3,
+            AlertStyle=1,
+            Operator=1,
+            Formula1=formula
+        )
+
+        messagebox.showinfo("Erfolg", "Dropdowns wurden erfolgreich hinzugefügt.")
+
+    except Exception as e:
+        messagebox.showerror("Fehler", f"Fehler beim Hinzufügen der Dropdown-Liste: {e}")
