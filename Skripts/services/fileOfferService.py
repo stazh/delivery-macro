@@ -1,33 +1,11 @@
 import sys
 import os
-import re
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Tuple, Any
+import config
+import xlwings as xw
+import win32com.client as win32comClient
 
-try:
-    import xlwings as xw
-    import win32com.client as win32comClient
-except ImportError as e:
-    messagebox.showerror("Import-Fehler", f"Fehler beim Importieren der Bibliotheken: {e}")
-    sys.exit(1)
-
-TARGET_SHEET_NAME = "Angebot_aktuell"
-WORD_TABLE_INDEX = 2
-WORD_FIRST_DATA_ROW = 3
-
-COL_INHALT = 1
-COL_ZEITRAUM = 2
-COL_LFM = 3
-COL_GB = 4
-COL_MEDIUM = 5
-
-ROW_BEHOERDE = 6
-ROW_AMT = 7
-ROW_ZUSTAENDIG = 8
-ROW_DATUM_ANGEBOT = 11
-COL_METADATA = 2
-
-START_DATA_ROW = 2
 
 def sheetExists(sheetName, workbook) -> bool:
     try:
@@ -43,9 +21,9 @@ def importFileOfferWord() -> None:
     try:
         app = xw.apps.active
         app.visible = False
-        workbook = app.books['Ablieferungsmakro.xlsm']
+        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME] 
     except Exception as e:
-        messagebox.showerror("Excel Fehler", "Es konnte keine Excel-Anwendung gestartet werden.")
+        messagebox.showerror("Excel Fehler", f"Es konnte keine Excel-Anwendung gestartet werden: {e}")
         return
 
     file = filedialog.askopenfilename(filetypes=[("Word-Dokument", "*.docx")], title="Bitte Word-Datei auswählen...")
@@ -57,14 +35,12 @@ def importFileOfferWord() -> None:
     importFileOffer(file, workbook)
     messagebox.showinfo("Information", "Import von Aktenangebotsformular abgeschlossen.")
 
-
 def importFileOffer(file_path: str, workbook) -> None:
     try:
-        ws_target = workbook.sheets[TARGET_SHEET_NAME]
+        ws_target = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
         copyTables(file_path, ws_target)
     except Exception as e:
         messagebox.showerror("Fehler beim Import", f"Fehler beim Importieren der Datei: {e}")
-
 
 def copyTables(file_path: str, ws_target) -> None:
     try:
@@ -83,22 +59,20 @@ def copyTables(file_path: str, ws_target) -> None:
     except Exception as e:
         messagebox.showerror("Word-Import Fehler", f"Fehler beim Lesen der Word-Datei: {e}")
 
-
 def readMetaDataFromDoc(word_doc) -> Tuple[str, str, str, str]:
     try:
         full_text = word_doc.Content.text.replace('\r\n', '\r')
         meta_lines = full_text.split('\r')
 
-        direction = safeExtract(meta_lines, 1, "Direktion (Behörde):")
-        office = safeExtract(meta_lines, 2, "Amtsstelle:")
-        responsible = safeExtract(meta_lines, 3, "Zuständig in der Amtsstelle:")
-        offer_date = safeExtract(meta_lines, 4, "Datum des Angebots:")
+        direction = safeExtract(meta_lines, 1, config.WORD_DIRECTION_TEXT)
+        office = safeExtract(meta_lines, 2, config.WORD_OFFICE_TEXT)
+        responsible = safeExtract(meta_lines, 3, config.WORD_RESPONSIBLE_TEXT)
+        offer_date = safeExtract(meta_lines, 4, config.WORD_OFFER_DATE_TEXT)
 
         return direction, office, responsible, offer_date
     except Exception as e:
         messagebox.showerror("Fehler Word", f"Fehler beim Lesen von Metadaten: {e}")
         return "", "", "", ""
-
 
 def safeExtract(arr: List[str], idx: int, tag: str) -> str:
     try:
@@ -109,21 +83,20 @@ def safeExtract(arr: List[str], idx: int, tag: str) -> str:
         pass
     return ""
 
-
 def readWordTable(word_doc) -> List[List[str]]:
     try:
-        if word_doc.Tables.Count < WORD_TABLE_INDEX:
+        if word_doc.Tables.Count < config.WORD_TABLE_INDEX:
             return []
         
-        word_table = word_doc.Tables(WORD_TABLE_INDEX)
+        word_table = word_doc.Tables(config.WORD_TABLE_INDEX)
 
-        if word_table.Rows.Count < WORD_FIRST_DATA_ROW:
+        if word_table.Rows.Count < config.WORD_FIRST_DATA_ROW:
             return []
         
-        data_rows = word_table.Rows.Count - (WORD_FIRST_DATA_ROW - 1)
+        data_rows = word_table.Rows.Count - (config.WORD_FIRST_DATA_ROW - 1)
         tmp = []
         
-        for r in range(WORD_FIRST_DATA_ROW, word_table.Rows.Count + 1):
+        for r in range(config.WORD_FIRST_DATA_ROW, word_table.Rows.Count + 1):
             row = []
             for c in range(1, 6):
                 cell_text = safeGetCellText(word_table, r, c)
@@ -134,14 +107,12 @@ def readWordTable(word_doc) -> List[List[str]]:
         messagebox.showerror("Fehler Word Table", f"Fehler beim Lesen der Word-Tabelle: {e}")
         return []
 
-
 def safeGetCellText(word_table, r: int, c: int) -> str:
     try:
         text = word_table.Cell(r, c).Range.text
         return cleanString(text)
     except:
         return ""
-
 
 def cleanString(text: Any) -> str:
     if text is None or text == "":
@@ -161,14 +132,13 @@ def cleanString(text: Any) -> str:
     
     return s.strip()
 
-
 def writeDataToSheet(ws_target, data_array: List[List[str]], 
                     direction: str, office: str, responsible: str, offer_date: str) -> None:
     try:
-        ws_target.range(f'O{ROW_BEHOERDE}').value = direction
-        ws_target.range(f'O{ROW_AMT}').value = office
-        ws_target.range(f'O{ROW_ZUSTAENDIG}').value = responsible
-        ws_target.range(f'O{ROW_DATUM_ANGEBOT}').value = offer_date
+        ws_target.range(f'O{config.ROW_BEHOERDE}').value = direction
+        ws_target.range(f'O{config.ROW_AMT}').value = office
+        ws_target.range(f'O{config.ROW_ZUSTAENDIG}').value = responsible
+        ws_target.range(f'O{config.ROW_DATUM_ANGEBOT}').value = offer_date
         if not data_array:
             return
         
@@ -179,108 +149,42 @@ def writeDataToSheet(ws_target, data_array: List[List[str]],
 
             lfm_value = ""
             if row[2] and row[2].strip():
-                lfm_value = convertToLfm(row[2])
+                lfm_value = row[2]
             
             gb_value = ""
             if row[3] and row[3].strip():
-                gb_value = convertToGb(row[3])
+                gb_value = row[3]
             
             medium_value = row[4].replace(",", ";") if row[4] else ""
             
-            out.append([
-                row[0],
-                row[1],
-                lfm_value,
-                gb_value,
-                medium_value
-            ])
+            out.append([row[0], row[1], lfm_value, gb_value, medium_value])
         
         if out:
-            end_row = START_DATA_ROW + len(out) - 1
-            ws_target.range(f'A{START_DATA_ROW}:E{end_row}').value = out
+            end_row = config.START_DATA_ROW + len(out) - 1
+            ws_target.range(f'A{config.START_DATA_ROW}:E{end_row}').value = out
     
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}")
-
-
-
-def convertToLfm(value: Any) -> float:
-    return convertWithUnits(value, "LENGTH")
-
-
-def convertToGb(value: Any) -> float:
-    return convertWithUnits(value, "SIZE")
-
-
-def convertWithUnits(value: Any, unit_type: str) -> float:
-    try:
-        if value is None or value == "":
-            return ""
-        
-        s = str(value).lower().replace(",", ".").replace(" ", "")
-        if s == "":
-            return ""
-        
-        match = re.match(r'([0-9.]+)(.*)', s)
-        if not match:
-            return ""
-        
-        num_str = match.group(1)
-        unit = match.group(2)
-        
-        try:
-            num = float(num_str)
-        except:
-            return ""
-        
-        factor = 1.0
-        
-        if unit_type == "LENGTH":
-            if unit in ["", "m", "lfm", "lm", "meter"]:
-                factor = 1.0
-            elif unit == "cm":
-                factor = 0.01
-            elif unit == "mm":
-                factor = 0.001
-            elif unit == "km":
-                factor = 1000.0
-        
-        elif unit_type == "SIZE":
-            if unit in ["", "g", "gb", "gigabyte"]:
-                factor = 1.0
-            elif unit == "tb":
-                factor = 1024.0
-            elif unit == "mb":
-                factor = 1.0 / 1024.0
-            elif unit in ["kb", "k"]:
-                factor = 1.0 / 1048576.0
-        
-        return num * factor
-    
-    except Exception as e:
-        messagebox.showerror("Fehler Convert", f"Fehler bei Einheiten-Konvertierung: {e}")
-        return ""
-
 
 def createTemplate() -> None:
     try:
         app = xw.apps.active
         app.visible = False
-        workbook = app.books['Ablieferungsmakro.xlsm']
+        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
         
-        stammdaten_workbook = xw.Book('./Daten/Stammdaten.xlsx')
-        dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade']
-        select_fields = stammdaten_workbook.sheets['Auswahlfelder']
+        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
+        dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
+        select_fields = stammdaten_workbook.sheets[config.SELECTION_FIELDS_SHEET_NAME]
         
-        select_values = select_fields.range('A1:D1').value
+        select_values = select_fields.range(config.SELECTION_REASON_OFFER_LENGTH).value
 
-        complete_takeover_list = select_fields.range('A2:A11').value
-        partial_takeover_list = select_fields.range('B2:B5').value
-        no_takeover_list = select_fields.range('C2:C9').value
-        cant_be_offered_list = select_fields.range('D2').value
-        conditional_values = [complete_takeover_list, partial_takeover_list, no_takeover_list, cant_be_offered_list]
+        complete_takeover_list = select_fields.range(config.SELECTION_COMPLETE_TAKEOVER_FIELDS).value
+        partial_takeover_list = select_fields.range(config.SELECTION_PARTIAL_TAKEOVER_FIELDS).value
+        no_takeover_list = select_fields.range(config.SELECTION_NO_TAKEOVER_FIELDS).value
+        cant_be_offered_list = select_fields.range(config.SELECTION_CANT_BE_OFFERED_FIELDS).value
+        conditional_values = [complete_takeover_list, partial_takeover_list, no_takeover_list, [cant_be_offered_list]]
 
-        template_path = dateipfade_sheet.range('B4').value
+        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
         stammdaten_workbook.close()
         
         if not template_path or not os.path.exists(template_path):
@@ -288,7 +192,7 @@ def createTemplate() -> None:
             return
         
         template_workbook = xw.Book(template_path)
-        template_sheet = template_workbook.sheets[TARGET_SHEET_NAME]
+        template_sheet = template_workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
 
         template_sheet.copy(after=workbook.sheets[-1])
         
@@ -300,13 +204,11 @@ def createTemplate() -> None:
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}")
 
-
 def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
     try:
-        sheet = wb.sheets["Angebot_aktuell"]
+        sheet = wb.sheets[config.CURRENT_OFFER_SHEET_NAME]
         g2_values_str = ";".join(values)
-        cell_range_g2 = sheet.range('G2:G6268')
-        cell_range_h2 = sheet.range('H2:H6268')
+        cell_range_g2 = sheet.range(config.SELECTION_REASON_OFFER_LENGTH)
 
         cell_range_g2.api.Validation.Add(
             Type=3,
@@ -325,27 +227,18 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
             vertical_list = [[val] for val in cond_list]
 
             end_row = start_row + len(vertical_list) - 1
-            range_sheet = f"AZ{start_row}:AZ{end_row}"
+            range_sheet = f"{config.SELECTION_SECTION}{start_row}:{config.SELECTION_SECTION}{end_row}"
+            range_name = f"${config.SELECTION_SECTION}${start_row}:${config.SELECTION_SECTION}${end_row}"
             sheet.range(range_sheet).value = vertical_list
-            range_address = sheet.range(range_sheet)
 
             try:
                 if name in [n.name for n in wb.names]:
                     wb.names[name].delete()
-                wb.names.add(name, range_address) #TODO: Prüfe, warum der Bereich nicht hinzugefügt wird und es feststeckt (keine Fehlermeldung erhalten)
+                wb.names.add(name, f'={config.CURRENT_OFFER_SHEET_NAME}!{range_name}')
             except Exception as e:
                 messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des benannten Bereichs '{name}': {e}")
 
             start_row = end_row + 1
-
-        formula = "=INDIREKT(WECHSELN(G2;\" \";\"_\"))"
-
-        cell_range_h2.api.Validation.Add(
-            Type=3,
-            AlertStyle=1,
-            Operator=1,
-            Formula1=formula
-        )
 
         messagebox.showinfo("Erfolg", "Dropdowns wurden erfolgreich hinzugefügt.")
 

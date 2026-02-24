@@ -8,15 +8,15 @@ currentDir = os.path.dirname(os.path.abspath(__file__))
 
 libs_path = os.path.join(currentDir, 'libs')
 services_path = os.path.join(currentDir, 'services')
+config_path = os.path.join(currentDir, 'config.py')
 
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'importFileOfferWord', 'Importiert Aktenangebot (Word Datei) in die Excel tabelle (Angebot_aktuell)'),
     'create-template': ('fileOfferService', 'createTemplate', 'Erstellt eine Excel Vorlage (Angebot_aktuell)'),
     'create-delivery-agreement': ('deliveryAgreementService', 'createDeliveryAgreement', 'Erstellt eine Word Datei für die Ablieferungsvereinbarung'),
     'import-delivery-list-word': ('deliveryListService', 'importDeliveryListWord', 'Importiert die Ablieferungsvereinbarung und erstellt eine Excel Datei für das Ablieferungsverzeichnis'),
-    'import-delivery-list-excel': ('deliveryListService', 'importDeliveryListExcel', 'Importiert die Daten aus Angebot_aktuell und erstell eine Excel Datei für die Ablieferungsverzeichnis'),
+    'import-delivery-list-excel': ('deliveryListService', 'importDeliveryListExcel', 'Importiert die Daten aus Angebot_aktuell und erstell eine Excel Datei für das Ablieferungsverzeichnis'),
 }
-
 
 def callFunction(command):
     if command in COMMANDS:
@@ -38,6 +38,7 @@ def main():
     try:
         sys.path.append(services_path)
         sys.path.append(libs_path)
+        sys.path.append(config_path)
         parser = argparse.ArgumentParser(description="CLI ist für das Ablieferungsmakro und ruft die richtige Funktion der richtigen Datei auf.")
         parser.add_argument('command', type=str, help='Der Befehl, der die zugehörige Datei und Funktion bestimmt.')
         args = parser.parse_args()

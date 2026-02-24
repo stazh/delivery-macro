@@ -5,13 +5,9 @@ from datetime import datetime
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
 import win32com.client as win32
+import openpyxl
+import xlwings as xw
 
-try:
-    import openpyxl
-    import xlwings as xw
-except ImportError as e:
-    messagebox.showerror("Import-Fehler", f"Fehler beim Importieren der Bibliotheken: {e}")
-    sys.exit(1)
 
 TARGET_SHEET_NAME = "Angebot_aktuell"
 WORD_TABLE_INDEX = 1
