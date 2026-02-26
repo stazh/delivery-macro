@@ -99,6 +99,7 @@ def import_delivery_data(workbook) -> dict:
             "lfm": sheet.range(f"C{row}").value or config.DEFAULT_VALUE_LFM_GB,
             "gb": sheet.range(f"D{row}").value or config.DEFAULT_VALUE_LFM_GB,
             "medium": sheet.range(f"E{row}").value or '',
+            "ueber_medium": sheet.range(f"L{row}").value or '',
             "bewertung": sheet.range(f"G{row}").value or '',
             "begruendung": sheet.range(f"H{row}").value or '',
             "begruendung_kommentar": sheet.range(f"I{row}").value or '',
@@ -112,13 +113,14 @@ def import_delivery_data(workbook) -> dict:
             act_group += f" {row_data['lfm']} Lfm, {row_data['gb']} GB"
         else:
             act_group += f" {row_data['lfm'] if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB else row_data['gb']} GB"
-        act_group += f" ({row_data['medium']})"
+        declined_act_group = act_group + f" ({row_data['medium']})"
+        act_group += f" ({row_data['ueber_medium']})"
         
         vereinbarung = f"{row_data['bewertung']} \nBegründung: {row_data['begruendung']} \n{row_data['begruendung_kommentar']}"
 
         # Je nach Bewertung in die entsprechende Tabelle einfügen
         if row_data['begruendung'] == config.WORD_SHOW_DECLINED_LIST:
-            declined_table_data.append([act_group, f"{row_data['lfm']}/{row_data['gb']}"])
+            declined_table_data.append([declined_act_group, f"{row_data['lfm']}/{row_data['gb']}"])
         else:
             table_data.append([act_group, vereinbarung, f"{row_data['ueber_lfm']}/{row_data['ueber_gb']}"])
 
@@ -174,24 +176,41 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
 def insert_table_data(word, table_data, declined_table_data) -> None:
     """Fügt die Tabellenwerte in das Word-Dokument ein."""
     try:
+        # Zugriff auf das aktive Word-Dokument und Tabellen
         doc = word.ActiveDocument
-        accepted_files = doc.Tables[2]
-        declined_files = doc.Tables[3]
+        acceptedFiles = doc.Tables[2]
+        declinedFiles = doc.Tables[3]
+        declinedText = config.WORD_DECLINED_TEXT
 
-        # Löschen alter Zeilen und Hinzufügen neuer Daten
-        for table, data in [(accepted_files, table_data), (declined_files, declined_table_data)]:
-            for row in range(table.Rows.Count, 1, -1):  # Löscht alle existierenden Zeilen
-                table.Rows(row).Delete()
+        # Entfernt alle bestehenden Zeilen in der Tabelle für akzeptierte Dateien
+        for row in range(acceptedFiles.Rows.Count, 1, -1):
+            acceptedFiles.Rows(row).Delete()
 
-            for i, row in enumerate(data):
-                table.Rows.Add()
-                table.Cell(i + 2, 1).Range.Text = row[0]
-                table.Cell(i + 2, 2).Range.Text = row[1]
-                table.Cell(i + 2, 3).Range.Text = row[2] if len(row) > 2 else ""
+        # Fügt neue Zeilen in die Tabelle für akzeptierte Dateien ein
+        for i, row in enumerate(table_data):
+            acceptedFiles.Rows.Add()
+            # Bearbeitet den Text in der ersten Spalte, wenn er mit dem Muster übereinstimmt
+            if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
+                row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r', \n\1', row[0])
+            acceptedFiles.Cell(i + 2, 1).Range.Text = row[0]
+            acceptedFiles.Cell(i + 2, 2).Range.Text = row[1]
+            acceptedFiles.Cell(i + 2, 3).Range.Text = row[2]
 
-        # Wenn keine abgelehnten Dateien vorhanden sind, wird die Tabelle gelöscht
-        if not declined_table_data:
-            declined_files.Delete()
+        # Wenn es abgelehnte Dateien gibt, füge sie in die Tabelle für abgelehnte Dateien ein
+        if len(declined_table_data) > 0:
+            for row in range(declinedFiles.Rows.Count, 1, -1):
+                declinedFiles.Rows(row).Delete()
+
+            # Fügt abgelehnte Dateien in die Tabelle ein
+            for i, row in enumerate(declined_table_data):
+                declinedFiles.Rows.Add()
+                if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
+                    row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r', \n\1', row[0])
+                declinedFiles.Cell(i + 2, 1).Range.Text = row[0]
+                declinedFiles.Cell(i + 2, 2).Range.Text = row[1]
+        else:
+            declinedFiles.Delete()
+            word.Selection.Find.Execute(declinedText, False, False, False, False, False, True, 1, False, "", 2)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")

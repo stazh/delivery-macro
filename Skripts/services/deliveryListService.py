@@ -31,7 +31,6 @@ def import_delivery_list_excel() -> None:
 
     try:
         app = xw.apps.active
-        app.visible = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
         messagebox.showerror("Fehler", "Excel‑Instanz konnte nicht gefunden werden oder Datei ist nicht offen.")
@@ -48,7 +47,6 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
     """Erstellt die Ablieferungsverzeichnis in einer Excel-Datei."""
     try:
         stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
-        stammdaten_workbook.visible = False
         dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
         
         template_rel = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_LIST).value
@@ -71,8 +69,8 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         exc_file_path = os.path.abspath(exc_file_path)
 
         # Lade die Vorlage und speichere sie im Zielordner
-        wb.visible = True
         wb = openpyxl.load_workbook(exc_file)
+        wb.visible = True
         wb.save(exc_file_path)
         
         # Öffne die neu gespeicherte Excel-Datei
@@ -201,12 +199,13 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
 
     table_data = []
     rows = ws.range(f"A{2}:E{ws.cells.last_cell.row}").value
+    reason_row = ws.range(f"G{2}:G{ws.cells.last_cell.row}").value
     accepted_data_row = ws.range(f"J{2}:K{ws.cells.last_cell.row}").value
     if rows:
-        for row, accepted_row in zip(rows, accepted_data_row):
-            if all(cell is None or str(cell).strip() == "" for cell in row):
+        for row, accepted_row, reason in zip(rows, accepted_data_row, reason_row):
+            if all(cell is None or str(cell).strip() == "" for cell in row) or (reason == config.SELECTION_REASON_DECLINED_TEXT):
                 continue
-
+            
             lfm_accepted = accepted_row[0] if accepted_row[0] is not None else "0"
             gb_accepted = accepted_row[1] if accepted_row[1] is not None else "0"
             row[2] = lfm_accepted
