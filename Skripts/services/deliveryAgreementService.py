@@ -113,16 +113,16 @@ def import_delivery_data(workbook) -> dict:
             act_group += f" {row_data['lfm']} Lfm, {row_data['gb']} GB"
         else:
             act_group += f" {row_data['lfm'] if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB else row_data['gb']} GB"
-        declined_act_group = act_group + f" ({row_data['medium']})"
-        act_group += f" ({row_data['ueber_medium']})"
+        act_group += f" ({row_data['medium']})"
         
         vereinbarung = f"{row_data['bewertung']} \nBegründung: {row_data['begruendung']} \n{row_data['begruendung_kommentar']}"
 
         # Je nach Bewertung in die entsprechende Tabelle einfügen
         if row_data['begruendung'] == config.WORD_SHOW_DECLINED_LIST:
-            declined_table_data.append([declined_act_group, f"{row_data['lfm']}/{row_data['gb']}"])
+            declined_table_data.append([act_group, f"{row_data['lfm']}/{row_data['gb']}"])
         else:
-            table_data.append([act_group, vereinbarung, f"{row_data['ueber_lfm']}/{row_data['ueber_gb']}"])
+            medium = f" ({row_data['ueber_medium']})" if row_data['ueber_medium'] and row_data['ueber_medium'].strip() != "" else ""
+            table_data.append([act_group, vereinbarung, f"{row_data['ueber_lfm']}/{row_data['ueber_gb']}{medium}"])
 
         row += 1
 

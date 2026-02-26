@@ -159,18 +159,20 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
             if medium_match:
                 medium = medium_match.group(1).strip()
 
-        # Daten bereinigen und in das Excel-kompatible Format umwandeln
+        # Bereinige den Text in row[1]
         row[1] = row[1].strip().replace('\n', '').replace('\r', '').replace('\x07', '')
-        if row[1].__contains__("/"):
-            parts = row[1].split('/')
-            lfm = parts[0]
-            gb = parts[1]
-        elif row[0].__contains__("Lfm"):
-            lfm = row[1]
-        else:
-            gb = row[1]
 
-        table_data.append([inhalt, zeitraum, lfm, gb, medium])
+        if "(" in row[1] and ")" in row[1]:
+            parts = row[1].split('(')
+            number_part = parts[0].strip()
+            medium_part = f"({parts[1].split(')')[0]})".strip()
+        else:
+            number_part = row[1]
+            medium_part = ""
+
+        lfm, gb = number_part.split('/') if '/' in number_part else ("0", "0")
+
+        table_data.append([inhalt, zeitraum, lfm, gb, medium_part])
     return table_data
 
 
