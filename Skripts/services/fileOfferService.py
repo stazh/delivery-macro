@@ -1,5 +1,4 @@
-import sys
-import os
+import os 
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Tuple, Any
 import config
@@ -7,83 +6,94 @@ import xlwings as xw
 import win32com.client as win32comClient
 
 
-def sheetExists(sheetName, workbook) -> bool:
+def sheet_exists(sheet_name: str, workbook) -> bool:
+    """Überprüft, ob ein Arbeitsblatt mit dem angegebenen Namen existiert."""
     try:
-        workbook.sheets[sheetName]
+        workbook.sheets[sheet_name]
         return True
     except:
         return False
 
-def importFileOfferWord() -> None:
+
+def import_file_offer_word() -> None:
+    """Importiert ein Aktenangebotsformular und fügt die Daten in die Excel-Tabelle."""
     root = Tk()
     root.withdraw()
 
     try:
         app = xw.apps.active
         app.visible = False
-        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME] 
+        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
         messagebox.showerror("Excel Fehler", f"Es konnte keine Excel-Anwendung gestartet werden: {e}")
         return
 
+    # Öffnen des Datei-Dialogs zur Auswahl einer Word-Datei
     file = filedialog.askopenfilename(filetypes=[("Word-Dokument", "*.docx")], title="Bitte Word-Datei auswählen...")
     if not file:
         messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.")
         return
 
-    createTemplate()
-    importFileOffer(file, workbook)
+    create_template()
+    import_file_offer(file, workbook)
     messagebox.showinfo("Fertig", "Import von Aktenangebotsformular abgeschlossen.")
 
-def importFileOffer(file_path: str, workbook) -> None:
+
+def import_file_offer(file_path: str, workbook) -> None:
+    """Importiert die Daten aus einer Word-Datei in die Excel-Tabelle."""
     try:
         ws_target = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
-        copyTables(file_path, ws_target)
+        copy_tables(file_path, ws_target)
     except Exception as e:
         messagebox.showerror("Fehler beim Import", f"Fehler beim Importieren der Datei: {e}")
 
-def copyTables(file_path: str, ws_target) -> None:
+
+def copy_tables(file_path: str, ws_target) -> None:
+    """Kopiert die Tabellen aus einer Word-Datei in das Excel-Arbeitsblatt."""
     try:
-        try:
-            word_app = win32comClient.GetObject(None, "Word.Application")
-        except:
-            word_app = win32comClient.Dispatch("Word.Application")
-        
+        word_app = win32comClient.GetObject(None, "Word.Application") if not win32comClient.Dispatch("Word.Application") else win32comClient.Dispatch("Word.Application")
+        word_app.Visible = False
         word_doc = word_app.Documents.Open(file_path, ReadOnly=True)
-        direction, office, responsible, offer_date = readMetaDataFromDoc(word_doc)
-        data_array = readWordTable(word_doc)
-        writeDataToSheet(ws_target, data_array, direction, office, responsible, offer_date)
+        direction, office, responsible, offer_date = read_meta_data_from_doc(word_doc)
+        data_array = read_word_table(word_doc)
+        write_data_to_sheet(ws_target, data_array, direction, office, responsible, offer_date)
         word_doc.Close(SaveChanges=False)
         word_app = None
         
     except Exception as e:
         messagebox.showerror("Word-Import Fehler", f"Fehler beim Lesen der Word-Datei: {e}")
 
-def readMetaDataFromDoc(word_doc) -> Tuple[str, str, str, str]:
+
+def read_meta_data_from_doc(word_doc) -> Tuple[str, str, str, str]:
+    """Liest die Metadaten aus einer Word-Datei."""
     try:
         full_text = word_doc.Content.text.replace('\r\n', '\r')
         meta_lines = full_text.split('\r')
 
-        direction = safeExtract(meta_lines, 1, config.WORD_DIRECTION_TEXT)
-        office = safeExtract(meta_lines, 2, config.WORD_OFFICE_TEXT)
-        responsible = safeExtract(meta_lines, 3, config.WORD_RESPONSIBLE_TEXT)
-        offer_date = safeExtract(meta_lines, 4, config.WORD_OFFER_DATE_TEXT)
+        direction = safe_extract(meta_lines, 1, config.WORD_DIRECTION_TEXT)
+        office = safe_extract(meta_lines, 2, config.WORD_OFFICE_TEXT)
+        responsible = safe_extract(meta_lines, 3, config.WORD_RESPONSIBLE_TEXT)
+        offer_date = safe_extract(meta_lines, 4, config.WORD_OFFER_DATE_TEXT)
 
         return direction, office, responsible, offer_date
     except Exception as e:
         messagebox.showerror("Fehler Word", f"Fehler beim Lesen von Metadaten: {e}")
         return "", "", "", ""
 
-def safeExtract(arr: List[str], idx: int, tag: str) -> str:
+
+def safe_extract(arr: List[str], idx: int, tag: str) -> str:
+    """Extrahiert sicher einen Text aus der Liste, basierend auf dem Index und Tag."""
     try:
         if 0 <= idx < len(arr):
             text = arr[idx].replace(tag, "")
-            return cleanString(text)
+            return clean_string(text)
     except:
         pass
     return ""
 
-def readWordTable(word_doc) -> List[List[str]]:
+
+def read_word_table(word_doc) -> List[List[str]]:
+    """Liest eine Tabelle aus einer Word-Datei und gibt die Daten als Liste zurück."""
     try:
         if word_doc.Tables.Count < config.WORD_TABLE_INDEX:
             return []
@@ -93,52 +103,49 @@ def readWordTable(word_doc) -> List[List[str]]:
         if word_table.Rows.Count < config.WORD_FIRST_DATA_ROW:
             return []
         
-        data_rows = word_table.Rows.Count - (config.WORD_FIRST_DATA_ROW - 1)
         tmp = []
         
         for r in range(config.WORD_FIRST_DATA_ROW, word_table.Rows.Count + 1):
-            row = []
-            for c in range(1, 6):
-                cell_text = safeGetCellText(word_table, r, c)
-                row.append(cell_text)
+            row = [safe_get_cell_text(word_table, r, c) for c in range(1, 6)]
             tmp.append(row)
         return tmp
     except Exception as e:
         messagebox.showerror("Fehler Word Table", f"Fehler beim Lesen der Word-Tabelle: {e}")
         return []
 
-def safeGetCellText(word_table, r: int, c: int) -> str:
+
+def safe_get_cell_text(word_table, r: int, c: int) -> str:
+    """Sicheres Abrufen des Textes aus einer bestimmten Zelle der Word-Tabelle."""
     try:
         text = word_table.Cell(r, c).Range.text
-        return cleanString(text)
+        return clean_string(text)
     except:
         return ""
 
-def cleanString(text: Any) -> str:
+
+def clean_string(text: Any) -> str:
+    """Bereinigt den Text von unnötigen Steuerzeichen und Leerzeichen."""
     if text is None or text == "":
         return ""
     
     s = str(text)
-    s = s.replace('\r\n', ' ')
-    s = s.replace('\r', ' ')
-    s = s.replace('\n', ' ')
-    s = s.replace('\t', ' ')
-    s = s.replace('\x07', ' ')
-    s = s.replace('\x0b', ' ')
-    s = s.replace('\xa0', ' ')
-    
+    s = s.replace('\r\n', ' ').replace('\r', ' ').replace('\n', ' ').replace('\t', ' ').replace('\x07', ' ').replace('\x0b', ' ').replace('\xa0', ' ')
+
     while '  ' in s:
         s = s.replace('  ', ' ')
     
     return s.strip()
 
-def writeDataToSheet(ws_target, data_array: List[List[str]], 
-                    direction: str, office: str, responsible: str, offer_date: str) -> None:
+
+def write_data_to_sheet(ws_target, data_array: List[List[str]], 
+                        direction: str, office: str, responsible: str, offer_date: str) -> None:
+    """Schreibt die extrahierten Daten in das Excel-Arbeitsblatt."""
     try:
         ws_target.range(f'O{config.ROW_BEHOERDE}').value = direction
         ws_target.range(f'O{config.ROW_AMT}').value = office
         ws_target.range(f'O{config.ROW_ZUSTAENDIG}').value = responsible
         ws_target.range(f'O{config.ROW_DATUM_ANGEBOT}').value = offer_date
+        
         if not data_array:
             return
         
@@ -147,17 +154,7 @@ def writeDataToSheet(ws_target, data_array: List[List[str]],
             if not any(row[1:5]):
                 continue
 
-            lfm_value = ""
-            if row[2] and row[2].strip():
-                lfm_value = row[2]
-            
-            gb_value = ""
-            if row[3] and row[3].strip():
-                gb_value = row[3]
-            
-            medium_value = row[4].replace(",", ";") if row[4] else ""
-            
-            out.append([row[0], row[1], lfm_value, gb_value, medium_value])
+            out.append([row[0], row[1], row[2] or "", row[3] or "", row[4].replace(",", ";") if row[4] else ""])
         
         if out:
             end_row = config.START_DATA_ROW + len(out) - 1
@@ -166,7 +163,9 @@ def writeDataToSheet(ws_target, data_array: List[List[str]],
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}")
 
-def createTemplate() -> None:
+
+def create_template() -> None:
+    """Erstellt eine Excel-Vorlage und fügt Dropdown-Listen hinzu."""
     try:
         app = xw.apps.active
         app.visible = False
@@ -177,12 +176,12 @@ def createTemplate() -> None:
         select_fields = stammdaten_workbook.sheets[config.SELECTION_FIELDS_SHEET_NAME]
         
         select_values = select_fields.range(config.SELECTION_REASON_OFFER_RANGE).value
-
-        complete_takeover_list = select_fields.range(config.SELECTION_COMPLETE_TAKEOVER_FIELDS).value
-        partial_takeover_list = select_fields.range(config.SELECTION_PARTIAL_TAKEOVER_FIELDS).value
-        no_takeover_list = select_fields.range(config.SELECTION_NO_TAKEOVER_FIELDS).value
-        cant_be_offered_list = select_fields.range(config.SELECTION_CANT_BE_OFFERED_FIELDS).value
-        conditional_values = [complete_takeover_list, partial_takeover_list, no_takeover_list, [cant_be_offered_list]]
+        conditional_values = [
+            select_fields.range(config.SELECTION_COMPLETE_TAKEOVER_FIELDS).value,
+            select_fields.range(config.SELECTION_PARTIAL_TAKEOVER_FIELDS).value,
+            select_fields.range(config.SELECTION_NO_TAKEOVER_FIELDS).value,
+            [select_fields.range(config.SELECTION_CANT_BE_OFFERED_FIELDS).value]
+        ]
 
         template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_OFFER_TABLE).value
         stammdaten_workbook.close()
@@ -193,9 +192,7 @@ def createTemplate() -> None:
         
         template_workbook = xw.Book(template_path)
         template_sheet = template_workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
-
         template_sheet.copy(after=workbook.sheets[-1])
-        
         template_workbook.close()
 
         add_dropdown_to_excel(workbook, select_values, conditional_values)
@@ -204,7 +201,9 @@ def createTemplate() -> None:
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}")
 
+
 def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
+    """Fügt Dropdown-Listen in das Excel-Arbeitsblatt ein."""
     try:
         sheet = wb.sheets[config.CURRENT_OFFER_SHEET_NAME]
         g2_values_str = ";".join(values)
@@ -223,14 +222,12 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
                 continue
 
             name = values[i].replace(" ", "_").replace("-", "_")
-
             vertical_list = [[val] for val in cond_list]
-
             end_row = start_row + len(vertical_list) - 1
             range_sheet = f"{config.SELECTION_SECTION}{start_row}:{config.SELECTION_SECTION}{end_row}"
             range_name = f"${config.SELECTION_SECTION}${start_row}:${config.SELECTION_SECTION}${end_row}"
-            sheet.range(range_sheet).value = vertical_list
 
+            sheet.range(range_sheet).value = vertical_list
             try:
                 if name in [n.name for n in wb.names]:
                     wb.names[name].delete()

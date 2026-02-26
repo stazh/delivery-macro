@@ -7,116 +7,135 @@ import shutil
 import win32com.client as win32
 import config
 
-def createDeliveryAgreement() -> None: 
-    try: 
-        app = xw.apps.active 
-        app.visible = False 
+def create_delivery_agreement() -> None:
+    """Erstellt eine Ablieferungsvereinbarung basierend auf den Excel-Daten und einer Word-Vorlage."""
+    try:
+        # Excel- und Word-Initialisierung
+        app = xw.apps.active
+        app.visible = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
         stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
-        dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
-        contact_sheet = stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME]
-        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
-        if not template_path or not os.path.exists(template_path): 
-            messagebox.showerror("Fehler", f"Der angegebene Pfad zur Vorlage '{template_path}' ist ungültig.") 
-            return 
+        stammdaten_workbook.visible = False
         
-        data, table_data, declined_table_data = importDeliveryAgreementExcel(workbook)
-        
-        wordPath = os.path.abspath(config.CREATED_DELIVERY_AGREEMENT_FILE_NAME)
-        shutil.copy(template_path, wordPath) 
-        
-        if not os.path.exists(wordPath):
-            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {wordPath}")
+        # Vorlagenpfad auslesen und sicherstellen, dass die Datei existiert
+        template_path = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME].range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
+        if not template_path or not os.path.exists(template_path):
+            messagebox.showerror("Fehler", f"Ungültiger Vorlagenpfad: {template_path}")
             return
 
-        word = win32.DispatchEx("Word.Application") 
-        word.visible = True
-        word.Documents.Open(wordPath)
-        replacePlaceholdersInDoc(word, data, contact_sheet)
-        insertTableDataIntoWord(word, table_data, declined_table_data)
-        stammdaten_workbook.close() 
-        word.ActiveDocument.Save()
+        # Daten importieren
+        data, table_data, declined_table_data = import_delivery_data(workbook)
+
+        # Zielordner für das Dokument aus config lesen und sicherstellen, dass der Ordner existiert
+        output_folder = config.CREATED_DOCUMENT_FOLDER_PATH
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # Word-Datei erstellen und mit Platzhaltern ersetzen
+        word_filename = os.path.join(output_folder, config.CREATED_DELIVERY_AGREEMENT_FILE_NAME)
+        shutil.copy(template_path, word_filename)
         
-        messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt")
+        if not os.path.exists(word_filename):
+            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {word_filename}")
+            return
 
-    except Exception as e: 
-        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}") 
+        # Umwandlung des relativen Pfades in einen absoluten Pfad
+        word_filename_abs = os.path.abspath(word_filename)
+        if not os.path.exists(word_filename_abs):
+            messagebox.showerror("Fehler", f"Das Ziel-Wortdokument wurde nicht gefunden: {word_filename_abs}")
+            return
+
+        # Word-Dokument öffnen und Platzhalter ersetzen
+        try:
+            word = win32.DispatchEx("Word.Application")
+            word.visible = True
+            word.Documents.Open(word_filename_abs)
+
+            # Platzhalter ersetzen und Tabellen einfügen
+            replace_placeholders_in_doc(word, data, stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME])
+            insert_table_data(word, table_data, declined_table_data)
+
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen und Bearbeiten des Word-Dokuments: {e}")
+            return
+        
+        stammdaten_workbook.close()
+        word.ActiveDocument.Save()
+
+        messagebox.showinfo("Erfolg", "Die Ablieferungsvereinbarung wurde erfolgreich erstellt.")
+
+    except Exception as e:
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}")
 
 
-def importDeliveryAgreementExcel(workbook) -> dict:
+def import_delivery_data(workbook) -> dict:
+    """Importiert relevante Daten aus dem aktuellen Angebot (Excel)."""
     sheet = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
     
+    # Wichtige Felder aus dem Excel-Sheet extrahieren
     data = {
-        "kuerz": sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value if sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value else config.KUERZ_PLACEHOLDER,
-        "amt_mail": sheet.range(config.CURRENT_OFFER_FIELD_AMT_MAIL).value if sheet.range(config.CURRENT_OFFER_FIELD_AMT_MAIL).value else config.AMT_MAIL_PLACEHOLDER,
-        "amt_zeichen": sheet.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value if sheet.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value else config.AMT_ZEICHEN_PLACEHOLDER,
-        "amt_pname": sheet.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value if sheet.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value else config.AMT_P_NAME_PLACEHOLDER,
-        "amt_name": sheet.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value if sheet.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value else config.AMT_NAME_PLACEHOLDER,
-        "bes_datum": sheet.range(config.CURRENT_OFFER_FIELD_BES_DATUM).value if sheet.range(config.CURRENT_OFFER_FIELD_BES_DATUM).value else config.BES_DATUM_PLACEHOLDER,
-        "ang_datum": sheet.range(config.CURRENT_OFFER_FIELD_ANG_DATUM).value if sheet.range(config.CURRENT_OFFER_FIELD_ANG_DATUM).value else config.ANG_DATUM_PLACEHOLDER,
-        "uebern_datum": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value if sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value else config.UEBERN_DATUM_PLACEHOLDER,
-        "dir_name": sheet.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value if sheet.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value else config.DIR_NAME_PLACEHOLDER,
-        "ang_lfm": sheet.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value if sheet.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value else config.DEFAULT_VALUE_LFM_GB,
-        "ang_gb": sheet.range(config.CURRENT_OFFER_FIELD_ANG_GB).value if sheet.range(config.CURRENT_OFFER_FIELD_ANG_GB).value else config.DEFAULT_VALUE_LFM_GB,
-        "uebern_lfm": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value if sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value else config.DEFAULT_VALUE_LFM_GB,
-        "uebern_gb": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value if sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value else config.DEFAULT_VALUE_LFM_GB
+        "kuerz": sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value or config.KUERZ_PLACEHOLDER,
+        "amt_mail": sheet.range(config.CURRENT_OFFER_FIELD_AMT_MAIL).value or config.AMT_MAIL_PLACEHOLDER,
+        "amt_zeichen": sheet.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value or config.AMT_ZEICHEN_PLACEHOLDER,
+        "amt_pname": sheet.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value or config.AMT_P_NAME_PLACEHOLDER,
+        "amt_name": sheet.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value or config.AMT_NAME_PLACEHOLDER,
+        "bes_datum": sheet.range(config.CURRENT_OFFER_FIELD_BES_DATUM).value or config.BES_DATUM_PLACEHOLDER,
+        "ang_datum": sheet.range(config.CURRENT_OFFER_FIELD_ANG_DATUM).value or config.ANG_DATUM_PLACEHOLDER,
+        "uebern_datum": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or config.UEBERN_DATUM_PLACEHOLDER,
+        "dir_name": sheet.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value or config.DIR_NAME_PLACEHOLDER,
+        "ang_lfm": sheet.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value or config.DEFAULT_VALUE_LFM_GB,
+        "ang_gb": sheet.range(config.CURRENT_OFFER_FIELD_ANG_GB).value or config.DEFAULT_VALUE_LFM_GB,
+        "uebern_lfm": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value or config.DEFAULT_VALUE_LFM_GB,
+        "uebern_gb": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value or config.DEFAULT_VALUE_LFM_GB
     }
 
-    table_data = []
-    declined_table_data = []
+    table_data, declined_table_data = [], []
     row = 2
-    while sheet.range(f"A{row}").value: 
-        inhalt = sheet.range(f"A{row}").value or ''
-        zeitraum = sheet.range(f"B{row}").value or ''
-        lfm = sheet.range(f"C{row}").value or config.DEFAULT_VALUE_LFM_GB
-        gb = sheet.range(f"D{row}").value or config.DEFAULT_VALUE_LFM_GB
-        medium = sheet.range(f"E{row}").value or ''
-        bewertung = sheet.range(f"G{row}").value or ''
-        begruendung = sheet.range(f"H{row}").value or ''
-        begruendung_kommentar = sheet.range(f"I{row}").value or ''
-        ueber_lfm = sheet.range(f"J{row}").value or config.DEFAULT_VALUE_LFM_GB
-        ueber_gb = sheet.range(f"K{row}").value or config.DEFAULT_VALUE_LFM_GB
-        hasBoth =  True if gb != config.DEFAULT_VALUE_LFM_GB and lfm != config.DEFAULT_VALUE_LFM_GB else False
+    while sheet.range(f"A{row}").value:  # Durchläuft alle Zeilen
+        # Jede Zeile als Dictionary abspeichern
+        row_data = {
+            "inhalt": sheet.range(f"A{row}").value or '',
+            "zeitraum": sheet.range(f"B{row}").value or '',
+            "lfm": sheet.range(f"C{row}").value or config.DEFAULT_VALUE_LFM_GB,
+            "gb": sheet.range(f"D{row}").value or config.DEFAULT_VALUE_LFM_GB,
+            "medium": sheet.range(f"E{row}").value or '',
+            "bewertung": sheet.range(f"G{row}").value or '',
+            "begruendung": sheet.range(f"H{row}").value or '',
+            "begruendung_kommentar": sheet.range(f"I{row}").value or '',
+            "ueber_lfm": sheet.range(f"J{row}").value or config.DEFAULT_VALUE_LFM_GB,
+            "ueber_gb": sheet.range(f"K{row}").value or config.DEFAULT_VALUE_LFM_GB
+        }
 
-        aktengruppe = f"{inhalt}, {zeitraum}," 
-        if hasBoth:
-            aktengruppe += f" {lfm} Lfm, {gb} GB"
-        elif lfm != config.DEFAULT_VALUE_LFM_GB:
-            aktengruppe += f" {lfm} Lfm"
+        # Aktengruppen erstellen
+        act_group = f"{row_data['inhalt']}, {row_data['zeitraum']}," 
+        if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB and row_data['gb'] != config.DEFAULT_VALUE_LFM_GB:
+            act_group += f" {row_data['lfm']} Lfm, {row_data['gb']} GB"
         else:
-            aktengruppe += f" {gb} GB"
-        aktengruppe += f" ({medium})"
+            act_group += f" {row_data['lfm'] if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB else row_data['gb']} GB"
+        act_group += f" ({row_data['medium']})"
+        
+        vereinbarung = f"{row_data['bewertung']} \nBegründung: {row_data['begruendung']} \n{row_data['begruendung_kommentar']}"
 
-        vereinbarung = f"{bewertung} \nBegründung: {begruendung} \n{begruendung_kommentar}"
-        if hasBoth:
-            uebernommene_menge = f'{ueber_lfm}/{ueber_gb}'
-            declined_amount = f'{lfm}/{gb}'
-        elif ueber_lfm != config.DEFAULT_VALUE_LFM_GB:
-            uebernommene_menge = ueber_lfm
-            declined_amount = lfm
+        # Je nach Bewertung in die entsprechende Tabelle einfügen
+        if row_data['begruendung'] == config.WORD_SHOW_DECLINED_LIST:
+            declined_table_data.append([act_group, f"{row_data['lfm']}/{row_data['gb']}"])
         else:
-            uebernommene_menge = ueber_gb
-            declined_amount = gb
-
-        if(begruendung == config.WORD_SHOW_DECLINED_LIST):
-            declined_table_data.append([aktengruppe, declined_amount])
-        else:
-            table_data.append([aktengruppe, vereinbarung, uebernommene_menge])
+            table_data.append([act_group, vereinbarung, f"{row_data['ueber_lfm']}/{row_data['ueber_gb']}"])
 
         row += 1
 
     return data, table_data, declined_table_data
 
 
-def replacePlaceholdersInDoc(word, data: dict, contact_sheet) -> None:
+def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
+    """Ersetzt die Platzhalter im Word-Dokument mit den tatsächlichen Werten."""
     try:
         header_range = contact_sheet.range(config.DATA_CONTACT_RANGE)
-        stazh_name = config.STAZH_NAME_PLACEHOLDER
-        stazh_mail = config.STAZH_MAIL_PLACEHOLDER
-        stazh_nummer = config.STAZH_NUMMER_PLACEHOLDER
-
+        stazh_name, stazh_mail, stazh_nummer = config.STAZH_NAME_PLACEHOLDER, config.STAZH_MAIL_PLACEHOLDER, config.STAZH_NUMMER_PLACEHOLDER
+        
+        # Findet den entsprechenden Kontakt in der Tabelle und aktualisiert die Werte
         for cell in header_range:
-            if data.get("kuerz").lower() in str(cell.value).lower():
+            if data["kuerz"].lower() in str(cell.value).lower():
                 column_index = cell.column
                 stazh_name = contact_sheet.cells(2, column_index).value or config.STAZH_NAME_PLACEHOLDER
                 stazh_mail = contact_sheet.cells(3, column_index).value or config.STAZH_MAIL_PLACEHOLDER
@@ -124,70 +143,55 @@ def replacePlaceholdersInDoc(word, data: dict, contact_sheet) -> None:
                 break
 
         replacements = {
-            config.KUERZ_PLACEHOLDER: data.get("kuerz"),
+            config.KUERZ_PLACEHOLDER: data["kuerz"],
             config.ERSTELLUNGS_DATUM_PLACEHOLDER: datetime.now().strftime("%d.%m.%Y"),
-            config.AMT_ZEICHEN_PLACEHOLDER: data.get("amt_zeichen"),
-            config.AMT_P_NAME_PLACEHOLDER: data.get("amt_pname"),
-            config.AMT_MAIL_PLACEHOLDER: data.get("amt_mail"),
-            config.BES_DATUM_PLACEHOLDER: datetime.strftime(data.get("bes_datum"), "%d.%m.%Y"),
+            config.AMT_ZEICHEN_PLACEHOLDER: data["amt_zeichen"],
+            config.AMT_P_NAME_PLACEHOLDER: data["amt_pname"],
+            config.AMT_MAIL_PLACEHOLDER: data["amt_mail"],
+            config.BES_DATUM_PLACEHOLDER: datetime.strftime(data["bes_datum"], "%d.%m.%Y"),
             config.ABL_JAHR_PLACEHOLDER: datetime.now().year,
-            config.ANG_DATUM_PLACEHOLDER: datetime.strptime(data.get("ang_datum"), "%d.%m.%Y"),
-            config.ANG_LFM_PLACEHOLDER: data.get("ang_lfm"),
-            config.ANG_GB_PLACEHOLDER: data.get("ang_gb"),
-            config.UEBERN_LFM_PLACEHOLDER: data.get("uebern_lfm"),
-            config.UEBERN_GB_PLACEHOLDER: data.get("uebern_gb"),
-            config.AMT_NAME_PLACEHOLDER: data.get("amt_name"),
-            config.UEBERN_DATUM_PLACEHOLDER: datetime.strftime(data.get("uebern_datum"), "%d.%m.%Y"),
-            config.DIR_NAME_PLACEHOLDER: data.get("dir_name"),
+            config.ANG_DATUM_PLACEHOLDER: datetime.strptime(data["ang_datum"], "%d.%m.%Y"),
+            config.ANG_LFM_PLACEHOLDER: data["ang_lfm"],
+            config.ANG_GB_PLACEHOLDER: data["ang_gb"],
+            config.UEBERN_LFM_PLACEHOLDER: data["uebern_lfm"],
+            config.UEBERN_GB_PLACEHOLDER: data["uebern_gb"],
+            config.AMT_NAME_PLACEHOLDER: data["amt_name"],
+            config.UEBERN_DATUM_PLACEHOLDER: datetime.strftime(data["uebern_datum"], "%d.%m.%Y"),
+            config.DIR_NAME_PLACEHOLDER: data["dir_name"],
             config.STAZH_NAME_PLACEHOLDER: stazh_name,
             config.STAZH_MAIL_PLACEHOLDER: stazh_mail,
             config.STAZH_NUMMER_PLACEHOLDER: stazh_nummer
         }
 
+        # Ersetzen der Platzhalter
         for placeholder, value in replacements.items():
             word.Selection.Find.Execute(placeholder, False, False, False, False, False, True, 1, False, value, 2)
-            
-        for section in word.ActiveDocument.Sections:
-            for footer in section.Footers:
-                footer.Range.find.Execute(config.ERSTELLUNGS_DATUM_PLACEHOLDER, False, False, False, False, False, True, 1, False, replacements[config.ERSTELLUNGS_DATUM_PLACEHOLDER], 2)
-                footer.Range.find.Execute(config.AMT_ZEICHEN_PLACEHOLDER, False, False, False, False, False, True, 1, False, replacements[config.AMT_ZEICHEN_PLACEHOLDER], 2)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter in Word: {e}")
 
 
-def insertTableDataIntoWord(word, table_data, declined_table_data):
+def insert_table_data(word, table_data, declined_table_data) -> None:
+    """Fügt die Tabellenwerte in das Word-Dokument ein."""
     try:
         doc = word.ActiveDocument
-        acceptedFiles = doc.Tables[2]
-        declinedFiles = doc.Tables[3]
-        declinedText = config.WORD_DECLINED_TEXT
+        accepted_files = doc.Tables[2]
+        declined_files = doc.Tables[3]
 
-        for row in range(acceptedFiles.Rows.Count, 1, -1):
-            acceptedFiles.Rows(row).Delete()
+        # Löschen alter Zeilen und Hinzufügen neuer Daten
+        for table, data in [(accepted_files, table_data), (declined_files, declined_table_data)]:
+            for row in range(table.Rows.Count, 1, -1):  # Löscht alle existierenden Zeilen
+                table.Rows(row).Delete()
 
-        for i, row in enumerate(table_data):
-            acceptedFiles.Rows.Add()
-            if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
-                row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r', \n\1', row[0])
-            acceptedFiles.Cell(i + 2, 1).Range.Text = row[0]
-            acceptedFiles.Cell(i + 2, 2).Range.Text = row[1]
-            acceptedFiles.Cell(i + 2, 3).Range.Text = row[2] 
+            for i, row in enumerate(data):
+                table.Rows.Add()
+                table.Cell(i + 2, 1).Range.Text = row[0]
+                table.Cell(i + 2, 2).Range.Text = row[1]
+                table.Cell(i + 2, 3).Range.Text = row[2] if len(row) > 2 else ""
 
-        if len(declined_table_data) > 0:
-            for row in range(declinedFiles.Rows.Count, 1, -1):
-                declinedFiles.Rows(row).Delete()
-
-            for i, row in enumerate(declined_table_data):
-                declinedFiles.Rows.Add()
-                if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
-                    row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r', \n\1', row[0])
-                declinedFiles.Cell(i + 2, 1).Range.Text = row[0]
-                declinedFiles.Cell(i + 2, 2).Range.Text = row[1]
-        else:
-            declinedFiles.Delete()
-            word.Selection.Find.Execute(declinedText, False, False, False, False, False, True, 1, False, "", 2)
+        # Wenn keine abgelehnten Dateien vorhanden sind, wird die Tabelle gelöscht
+        if not declined_table_data:
+            declined_files.Delete()
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")
-        print(f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")

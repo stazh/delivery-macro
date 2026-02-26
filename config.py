@@ -4,7 +4,7 @@
 DELIVERY_MACRO_FILE_NAME = "Ablieferungsmakro.xlsm"
 DATA_FILE_PATH = "./Daten/Stammdaten.xlsx"
 CREATED_DELIVERY_AGREEMENT_FILE_NAME = "Ablieferungsvereinbarung.docx"
-CREATED_DOCUMENT_FOLDER_PATH = "./Erstellte Dokumente"
+CREATED_DOCUMENT_FOLDER_PATH = "./Generierte Dokumente"
 DELIVERY_LIST_FILE_NAME = "Ablieferungsverzeichnis.xlsx"
 
 # --------------------------
