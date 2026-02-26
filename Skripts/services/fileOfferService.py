@@ -183,19 +183,34 @@ def create_template() -> None:
             [select_fields.range(config.SELECTION_CANT_BE_OFFERED_FIELDS).value]
         ]
 
+        # Holen des Vorlagenpfads
         template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_OFFER_TABLE).value
         stammdaten_workbook.close()
-        
+
         if not template_path or not os.path.exists(template_path):
             messagebox.showerror("Fehler", f"Der angegebene Pfad '{template_path}' ist ungültig.")
             return
         
+        # Überprüfen, ob das Arbeitsblatt bereits existiert
+        sheet_name = config.CURRENT_OFFER_SHEET_NAME
+        if sheet_name in [sheet.name for sheet in workbook.sheets]:
+            # Popup zur Bestätigung des Ersetzens anzeigen
+            result = messagebox.askyesno("Bestätigung", f"Das Arbeitsblatt '{sheet_name}' existiert bereits. Möchten Sie es ersetzen?\n\nWarnung: Das Arbeitsblatt wird gelöscht und neu erstellt. Alle vorhandenen Daten gehen verloren.")
+            if result:
+                workbook.sheets[sheet_name].delete()
+            else:
+                return
+        
+        # Die Vorlage öffnen und das Arbeitsblatt kopieren
         template_workbook = xw.Book(template_path)
-        template_sheet = template_workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
+        template_sheet = template_workbook.sheets[sheet_name]
         template_sheet.copy(after=workbook.sheets[-1])
         template_workbook.close()
 
+        # Dropdown-Listen hinzufügen
         add_dropdown_to_excel(workbook, select_values, conditional_values)
+        
+        # Speichern der Arbeitsmappe
         workbook.save()
 
     except Exception as e:
