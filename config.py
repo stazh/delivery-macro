@@ -91,6 +91,7 @@ REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM = "(\d+(\.\d+)?)\s*Lfm"
 # ------------------------
 WORD_SHOW_DECLINED_LIST = "Aufbewahrungsfrist noch laufend"
 WORD_DECLINED_TEXT = "Die Aufbewahrungsfrist der folgenden Aktengruppen ist noch nicht abgelaufen. Diese müssen weiterhin aufbewahrt und bei Ablauf der Aufbewahrungsfrist erneut dem StAZH angeboten werden:"
+SELECTION_REASON_DECLINED_TEXT = "Darf noch nicht angeboten werden"
 
 # ----------------------------------------------
 # 9. Indizes der Tabellen im Liefervereinbarungsdokument
