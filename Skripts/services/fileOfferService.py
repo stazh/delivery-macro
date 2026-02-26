@@ -33,7 +33,7 @@ def importFileOfferWord() -> None:
 
     createTemplate()
     importFileOffer(file, workbook)
-    messagebox.showinfo("Information", "Import von Aktenangebotsformular abgeschlossen.")
+    messagebox.showinfo("Fertig", "Import von Aktenangebotsformular abgeschlossen.")
 
 def importFileOffer(file_path: str, workbook) -> None:
     try:
@@ -176,7 +176,7 @@ def createTemplate() -> None:
         dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
         select_fields = stammdaten_workbook.sheets[config.SELECTION_FIELDS_SHEET_NAME]
         
-        select_values = select_fields.range(config.SELECTION_REASON_OFFER_LENGTH).value
+        select_values = select_fields.range(config.SELECTION_REASON_OFFER_RANGE).value
 
         complete_takeover_list = select_fields.range(config.SELECTION_COMPLETE_TAKEOVER_FIELDS).value
         partial_takeover_list = select_fields.range(config.SELECTION_PARTIAL_TAKEOVER_FIELDS).value
@@ -184,7 +184,7 @@ def createTemplate() -> None:
         cant_be_offered_list = select_fields.range(config.SELECTION_CANT_BE_OFFERED_FIELDS).value
         conditional_values = [complete_takeover_list, partial_takeover_list, no_takeover_list, [cant_be_offered_list]]
 
-        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
+        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_OFFER_TABLE).value
         stammdaten_workbook.close()
         
         if not template_path or not os.path.exists(template_path):
@@ -239,8 +239,6 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
                 messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des benannten Bereichs '{name}': {e}")
 
             start_row = end_row + 1
-
-        messagebox.showinfo("Erfolg", "Dropdowns wurden erfolgreich hinzugefügt.")
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Hinzufügen der Dropdown-Liste: {e}")

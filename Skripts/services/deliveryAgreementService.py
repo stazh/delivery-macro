@@ -5,24 +5,24 @@ from datetime import datetime
 import xlwings as xw
 import shutil
 import win32com.client as win32
-import config  # Wir importieren nun direkt config.py
+import config
 
 def createDeliveryAgreement() -> None: 
     try: 
         app = xw.apps.active 
         app.visible = False 
-        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]  # Ersetzt den hartkodierten Dateinamen
-        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)  # Ersetzt den hartkodierten Dateipfad
-        dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]  # Ersetzt den Sheetnamen
-        contact_sheet = stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME]  # Ersetzt den Sheetnamen
-        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value  # Ersetzt den Zellen-Pfad
+        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
+        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
+        dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
+        contact_sheet = stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME]
+        template_path = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
         if not template_path or not os.path.exists(template_path): 
             messagebox.showerror("Fehler", f"Der angegebene Pfad zur Vorlage '{template_path}' ist ungültig.") 
             return 
         
         data, table_data, declined_table_data = importDeliveryAgreementExcel(workbook)
         
-        wordPath = os.path.abspath(config.CREATED_DELIVERY_AGREEMENT_FILE_NAME)  # Ersetzt den Dateinamen für das Word-Dokument
+        wordPath = os.path.abspath(config.CREATED_DELIVERY_AGREEMENT_FILE_NAME)
         shutil.copy(template_path, wordPath) 
         
         if not os.path.exists(wordPath):
@@ -37,14 +37,14 @@ def createDeliveryAgreement() -> None:
         stammdaten_workbook.close() 
         word.ActiveDocument.Save()
         
-        messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt und gespeichert.\nPfad: {wordPath}")
+        messagebox.showinfo("Fertig", f"Die Ablieferungsvereinbarung wurde erfolgreich erstellt")
 
     except Exception as e: 
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}") 
 
 
 def importDeliveryAgreementExcel(workbook) -> dict:
-    sheet = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]  # Ersetzt den Sheetnamen
+    sheet = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
     
     data = {
         "kuerz": sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value if sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value else config.KUERZ_PLACEHOLDER,
@@ -110,7 +110,7 @@ def importDeliveryAgreementExcel(workbook) -> dict:
 
 def replacePlaceholdersInDoc(word, data: dict, contact_sheet) -> None:
     try:
-        header_range = contact_sheet.range("A1:Z1")
+        header_range = contact_sheet.range(config.DATA_CONTACT_RANGE)
         stazh_name = config.STAZH_NAME_PLACEHOLDER
         stazh_mail = config.STAZH_MAIL_PLACEHOLDER
         stazh_nummer = config.STAZH_NUMMER_PLACEHOLDER
@@ -133,15 +133,15 @@ def replacePlaceholdersInDoc(word, data: dict, contact_sheet) -> None:
             config.ABL_JAHR_PLACEHOLDER: datetime.now().year,
             config.ANG_DATUM_PLACEHOLDER: datetime.strptime(data.get("ang_datum"), "%d.%m.%Y"),
             config.ANG_LFM_PLACEHOLDER: data.get("ang_lfm"),
-            config.ABL_GB_PLACEHOLDER: data.get("ang_gb"),
-            config.ABL_UEBERN_LFM_PLACEHOLDER: data.get("uebern_lfm"),
-            config.ABL_UEBERN_GB_PLACEHOLDER: data.get("uebern_gb"),
+            config.ANG_GB_PLACEHOLDER: data.get("ang_gb"),
+            config.UEBERN_LFM_PLACEHOLDER: data.get("uebern_lfm"),
+            config.UEBERN_GB_PLACEHOLDER: data.get("uebern_gb"),
             config.AMT_NAME_PLACEHOLDER: data.get("amt_name"),
             config.UEBERN_DATUM_PLACEHOLDER: datetime.strftime(data.get("uebern_datum"), "%d.%m.%Y"),
             config.DIR_NAME_PLACEHOLDER: data.get("dir_name"),
             config.STAZH_NAME_PLACEHOLDER: stazh_name,
-            config.STAZH_NUMMER_PLACEHOLDER: stazh_mail,
-            config.STAZH_MAIL_PLACEHOLDER: stazh_nummer
+            config.STAZH_MAIL_PLACEHOLDER: stazh_mail,
+            config.STAZH_NUMMER_PLACEHOLDER: stazh_nummer
         }
 
         for placeholder, value in replacements.items():

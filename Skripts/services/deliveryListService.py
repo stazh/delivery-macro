@@ -1,5 +1,5 @@
+import config
 import os
-import sys
 import re
 from datetime import datetime
 from tkinter import filedialog, messagebox, Tk
@@ -8,18 +8,6 @@ import win32com.client as win32
 import openpyxl
 import xlwings as xw
 
-
-TARGET_SHEET_NAME = "Angebot_aktuell"
-WORD_TABLE_INDEX = 1
-WORD_FIRST_DATA_ROW = 2
-
-COL_INHALT = 1
-COL_ZEITRAUM = 2
-COL_LFM = 3
-COL_GB = 4
-COL_MEDIUM = 5
-
-START_DATA_ROW = 2
 
 def importDeliveryListWord() -> None:
     root = Tk()
@@ -38,7 +26,7 @@ def importDeliveryListExcel() -> None:
 
     try:
         app = xw.apps.active
-        workbook = app.books['Ablieferungsmakro.xlsm']
+        workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
         messagebox.showerror("Fehler", "Excel‑Instanz konnte nicht gefunden werden oder Datei ist nicht offen.")
         return
@@ -53,10 +41,10 @@ def importDeliveryListExcel() -> None:
 
 def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -> None:
     try:
-        stammdaten_workbook = xw.Book('./Daten/Stammdaten.xlsx')
-        dateipfade_sheet = stammdaten_workbook.sheets['Dateipfade']
+        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
+        dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
         
-        template_rel = dateipfade_sheet.range('B2').value
+        template_rel = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_LIST).value
         stammdaten_workbook.close()
         exc_file = os.path.abspath(template_rel)
 
@@ -65,13 +53,15 @@ def createDeliveryList(doc_props: Dict[str, Any], table_data: List[List[str]]) -
             return
 
         wb = openpyxl.load_workbook(exc_file)
-        path = os.path.abspath("Ablieferungsverzeichnis.xlsx")
+        path = os.path.abspath(config.DELIVERY_LIST_FILE_NAME)
         wb.save(path)
-        workbook = xw.Book('./Ablieferungsverzeichnis.xlsx')
-        ws = workbook.sheets['Ablieferungsverzeichnis']
+        workbook = xw.Book(f'./{config.DELIVERY_LIST_FILE_NAME}')
+        ws = workbook.sheets[config.DELIVERY_LIST_SHEET_NAME]
         replace_placeholders_in_excel(ws, doc_props)
         insert_table_data(ws, table_data)
+        workbook.save()
 
+        messagebox.showinfo("Fertig", f"Das Ablieferungsverzeichnis wurde erfolgreich erstellt")
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}")
 
@@ -93,8 +83,8 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         third_column_data = row.Cells(3).Range.Text.strip()
         raw_data.append([first_column_data, third_column_data])
 
-        lfm_match = re.search(r'(\d+(\.\d+)?)\s*Lfm', first_column_data)
-        gb_match = re.search(r'(\d+(\.\d+)?)\s*GB', first_column_data)
+        lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
+        gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
         
         if lfm_match:
             angLfm += float(lfm_match.group(1))
@@ -103,15 +93,15 @@ def readDocxData(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
             angGB += float(gb_match.group(1))
 
     doc_props = {
-        "DirName": "<DirName>",
-        "AmtName": "<AmtName>",
-        "AmtPName": "<AmtPName>",
-        "ÜbernDatum": "<ÜbernDatum>",
+        "DirName": config.DIR_NAME_PLACEHOLDER,
+        "AmtName": config.AMT_NAME_PLACEHOLDER,
+        "AmtPName": config.AMT_P_NAME_PLACEHOLDER,
+        "ÜbernDatum": config.UEBERN_DATUM_PLACEHOLDER,
         "AngLfm": angLfm,
         "AngGB": angGB,
         "ÜbernLfm": "",
         "ÜbernGB": "",
-        "AblNummer": "<AblNummer>"
+        "AblNummer": config.ABL_NUMMER_PLACEHOLDER
     }
 
     table_data = convertWordTableData(raw_data)
@@ -128,14 +118,14 @@ def convertWordTableData(raw_data: List[List[str]]) -> List[List[str]]:
         gb = "0"
         medium = ""
 
-        year_match = re.search(r',\s*(\d{4}(?:\s*[-+]\s*\d{4})*)', row[0])
+        year_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR}', row[0])
         if year_match:
             year_index = year_match.start()
             parts = row[0][:year_index].strip(), row[0][year_index:].strip()
             inhalt = parts[0].removesuffix(',')
             zeitraum = parts[1].split(',')[1].strip()
 
-            medium_match = re.search(r'\(([^)]+)\)(?!.*\()', row[0])
+            medium_match = re.search(fr'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM}', row[0])
             if medium_match:
                 medium = medium_match.group(1).strip()
 
@@ -148,35 +138,34 @@ def convertWordTableData(raw_data: List[List[str]]) -> List[List[str]]:
             lfm = row[1]
         else:
             gb = row[1]
-        mark = "*" if gb != "0" else ""
 
-        table_data.append([inhalt, zeitraum, lfm, gb, medium, mark])
+        table_data.append([inhalt, zeitraum, lfm, gb, medium])
     return table_data
 
 def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
-    ws = workbook.sheets[TARGET_SHEET_NAME]
+    ws = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
 
-    übern_datum_raw = ws.range("O12").value or ""
+    übern_datum_raw = ws.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or ""
     
     if übern_datum_raw is not None and übern_datum_raw != "":
         übern_datum = datetime.strftime(übern_datum_raw, "%d.%m.%Y")
     else:
-        übern_datum = "<ÜbernDatum>"
+        übern_datum = config.UEBERN_DATUM_PLACEHOLDER
 
     doc_props = {
-        "DirName": ws.range("O6").value or "",
-        "AmtName": ws.range("O7").value or "",
-        "AmtPName": ws.range("O8").value or "",
+        "DirName": ws.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value or "",
+        "AmtName": ws.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value or "",
+        "AmtPName": ws.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value or "",
         "ÜbernDatum": übern_datum,
-        "AngLfm": "0" if ws.range("O2").value == 0.0 else str(ws.range("O2").value),
-        "ÜbernLfm": "0" if ws.range("O3").value == 0.0 else str(ws.range("O3").value),
-        "AngGB": "0" if ws.range("O4").value == 0.0 else str(ws.range("O4").value),
-        "ÜbernGB": "0" if ws.range("O5").value == 0.0 else str(ws.range("O5").value),
-        "AblNummer": ws.range("O13").value or ""
+        "AngLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value),
+        "ÜbernLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value),
+        "AngGB": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value),
+        "ÜbernGB": "0" if ws.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value),
+        "AblNummer": ws.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value or ""
     }
     table_data = []
-    rows = ws.range(f"A{START_DATA_ROW}:E{ws.cells.last_cell.row}").value
-    accepted_data_row = ws.range(f"J{START_DATA_ROW}:K{ws.cells.last_cell.row}").value
+    rows = ws.range(f"A{2}:E{ws.cells.last_cell.row}").value
+    accepted_data_row = ws.range(f"J{2}:K{ws.cells.last_cell.row}").value
     if rows:
         for row, accepted_row in zip(rows, accepted_data_row):
             if all(cell is None or str(cell).strip() == "" for cell in row):
@@ -185,20 +174,15 @@ def readExcelData(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
             lfm_accepted = accepted_row[0] if accepted_row[0] is not None else "0"
             gb_accepted = accepted_row[1] if accepted_row[1] is not None else "0"
             row[2] = lfm_accepted
-            row[3] = gb_accepted 
-
-            if gb_accepted != "0":
-                row.append("*")
-            else:
-                row.append("")
+            row[3] = gb_accepted
 
             table_data.append(row)
     return doc_props, table_data
 
 def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
     placeholders = [
-        "<DirName>", "<AmtName>", "<AmtPName>", "<ÜbernDatum>",
-        "<AngLfm>", "<AngGB>", "<ÜbernLfm>", "<ÜbernGB>", "<AblNummer>"
+        config.DIR_NAME_PLACEHOLDER, config.AMT_NAME_PLACEHOLDER, config.AMT_P_NAME_PLACEHOLDER, config.UEBERN_DATUM_PLACEHOLDER,
+        config.ANG_LFM_PLACEHOLDER, config.ANG_GB_PLACEHOLDER, config.UEBERN_LFM_PLACEHOLDER, config.UEBERN_GB_PLACEHOLDER, config.ABL_NUMMER_PLACEHOLDER
     ]
     
     values = [
@@ -214,7 +198,7 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
     ]
 
     for placeholder, value in zip(placeholders, values):
-        for row in ws.range('A1:G20'):
+        for row in ws.range(config.DELIVERY_LIST_PLACEHOLDER_RANGE).rows:
             for cell in row:
                 if cell.value and isinstance(cell.value, str):
                     if placeholder in cell.value:
@@ -224,6 +208,6 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
 def insert_table_data(ws, table_data: List[List[str]]) -> None:
     row_start = 24
     for row in table_data:
-        cell_range = ws.range(f'B{row_start}:G{row_start}')
+        cell_range = ws.range(f'B{row_start}:F{row_start}')
         cell_range.value = row
         row_start += 1

@@ -8,7 +8,7 @@ currentDir = os.path.dirname(os.path.abspath(__file__))
 
 libs_path = os.path.join(currentDir, 'libs')
 services_path = os.path.join(currentDir, 'services')
-config_path = os.path.join(currentDir, 'config.py')
+config_path = os.path.join(currentDir.replace('\main.pyz', ''))
 
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'importFileOfferWord', 'Importiert Aktenangebot (Word Datei) in die Excel tabelle (Angebot_aktuell)'),
