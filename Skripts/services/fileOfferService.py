@@ -209,7 +209,70 @@ def create_template() -> None:
 
         # Dropdown-Listen hinzufügen
         add_dropdown_to_excel(workbook, select_values, conditional_values)
-        
+
+        # Zugriff auf das kopierte Arbeitsblatt (das neue Arbeitsblatt)
+        new_sheet = workbook.sheets[sheet_name]
+
+        # VBA-Code als String
+        vba_code = """
+        Private Sub Worksheet_Change(ByVal Target As Range)
+            ' Deaktiviere Bildschirmaktualisierung und automatische Berechnungen
+            Application.ScreenUpdating = False
+            Application.Calculation = xlCalculationManual
+            Application.EnableEvents = False
+            
+            ' Überprüfen, ob die Änderung in den relevanten Zellen (G, C, D, E) erfolgt ist
+            If Not Intersect(Target, Me.Range("G:G,C:C,D:D,E:E")) Is Nothing Then
+                Dim rowNum As Long
+                rowNum = Target.Row ' Zeilennummer der geänderten Zelle
+                
+                ' Berechnung für Zelle J (optimiert)
+                With Me.Cells(rowNum, "G")
+                    If .Value = "keine Übernahme" Or .Value = "Darf noch nicht angeboten werden" Then
+                        Me.Cells(rowNum, "J").Value = 0
+                    ElseIf .Value = "vollständige Übernahme" Or .Value = "teilweise Übernahme" Then
+                        Me.Cells(rowNum, "J").Value = Me.Cells(rowNum, "C").Value
+                    Else
+                        Me.Cells(rowNum, "J").Value = ""
+                    End If
+                End With
+
+                ' Berechnung für Zelle K (optimiert)
+                With Me.Cells(rowNum, "G")
+                    If .Value = "vollständige Übernahme" Then
+                        Me.Cells(rowNum, "K").Value = Me.Cells(rowNum, "D").Value
+                    ElseIf .Value = "teilweise Übernahme" Then
+                        Me.Cells(rowNum, "K").Value = Me.Cells(rowNum, "D").Value
+                    ElseIf .Value = "keine Übernahme" Then
+                        Me.Cells(rowNum, "K").Value = 0
+                    ElseIf .Value = "Darf noch nicht angeboten werden" Then
+                        Me.Cells(rowNum, "K").Value = 0
+                    Else
+                        Me.Cells(rowNum, "K").Value = ""
+                    End If
+                End With
+
+                ' Berechnung für Zelle L (optimiert)
+                With Me.Cells(rowNum, "G")
+                    If .Value = "vollständige Übernahme" Then
+                        Me.Cells(rowNum, "L").Value = Me.Cells(rowNum, "E").Value
+                    Else
+                        Me.Cells(rowNum, "L").Value = ""
+                    End If
+                End With
+            End If
+
+            ' Wiederherstellung der Bildschirmaktualisierung und Berechnungen
+            Application.EnableEvents = True
+            Application.ScreenUpdating = True
+            Application.Calculation = xlCalculationAutomatic
+        End Sub
+        """
+
+        # Den VBA-Code hinzufügen
+        sheet_code_component = workbook.api.VBProject.VBComponents(new_sheet.api.CodeName)
+        sheet_code_component.CodeModule.AddFromString(vba_code)
+
         # Speichern der Arbeitsmappe
         workbook.save()
 

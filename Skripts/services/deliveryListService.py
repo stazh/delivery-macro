@@ -175,8 +175,10 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
             medium_part = ""
 
         lfm, gb = number_part.split('/') if '/' in number_part else ("0", "0")
+        if f"{lfm}" == config.DEFAULT_VALUE_LFM_GB and f"{gb}" == config.DEFAULT_VALUE_LFM_GB:
+            continue
 
-        table_data.append([inhalt, zeitraum, lfm, gb, medium_part])
+        table_data.append([inhalt, zeitraum, lfm, gb, medium_part.replace('(', '').replace(')', '')])
     return table_data
 
 
@@ -206,16 +208,18 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
     table_data = []
     rows = ws.range(f"A{2}:E{ws.cells.last_cell.row}").value
     reason_row = ws.range(f"G{2}:G{ws.cells.last_cell.row}").value
-    accepted_data_row = ws.range(f"J{2}:K{ws.cells.last_cell.row}").value
+    accepted_data_row = ws.range(f"J{2}:L{ws.cells.last_cell.row}").value
     if rows:
         for row, accepted_row, reason in zip(rows, accepted_data_row, reason_row):
-            if all(cell is None or str(cell).strip() == "" for cell in row) or (reason == config.SELECTION_REASON_DECLINED_TEXT):
+            if all(cell is None or str(cell).strip() == "" for cell in row) or (reason == config.SELECTION_REASON_DECLINED_TEXT) or (reason == config.SELECTION_REASON_NO_TAKEOVER_TEXT):
                 continue
             
             lfm_accepted = accepted_row[0] if accepted_row[0] is not None else "0"
             gb_accepted = accepted_row[1] if accepted_row[1] is not None else "0"
+            medium_accepted = accepted_row[2] if accepted_row[2] is not None else ""
             row[2] = lfm_accepted
             row[3] = gb_accepted
+            row[4] = medium_accepted
 
             table_data.append(row)
     return doc_props, table_data
