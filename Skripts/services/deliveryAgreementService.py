@@ -114,10 +114,12 @@ def import_delivery_data(workbook) -> dict:
 
         # Aktengruppen erstellen
         act_group = f"{row_data['inhalt']}, {row_data['zeitraum']}," 
-        if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB and row_data['gb'] != config.DEFAULT_VALUE_LFM_GB:
+        if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB and f"{row_data['gb']}" != config.DEFAULT_VALUE_LFM_GB:
             act_group += f" {row_data['lfm']} Lfm, {row_data['gb']} GB"
         else:
-            act_group += f" {row_data['lfm'] if row_data['lfm'] != config.DEFAULT_VALUE_LFM_GB else row_data['gb']} GB"
+            lfm_or_gb = f"{row_data['lfm']} Lfm" if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB else f"{row_data['gb']} GB"
+            act_group += f" {lfm_or_gb}"
+    
         act_group += f" ({row_data['medium']})"
         
         vereinbarung = f"{row_data['bewertung']} \nBegründung: {row_data['begruendung']} \n{row_data['begruendung_kommentar']}"
@@ -155,15 +157,15 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
             config.AMT_ZEICHEN_PLACEHOLDER: data["amt_zeichen"],
             config.AMT_P_NAME_PLACEHOLDER: data["amt_pname"],
             config.AMT_MAIL_PLACEHOLDER: data["amt_mail"],
-            config.BES_DATUM_PLACEHOLDER: datetime.strftime(data["bes_datum"], "%d.%m.%Y"),
+            config.BES_DATUM_PLACEHOLDER: data["bes_datum"],
             config.ABL_JAHR_PLACEHOLDER: datetime.now().year,
-            config.ANG_DATUM_PLACEHOLDER: datetime.strptime(data["ang_datum"], "%d.%m.%Y"),
+            config.ANG_DATUM_PLACEHOLDER: data["ang_datum"],
             config.ANG_LFM_PLACEHOLDER: data["ang_lfm"],
             config.ANG_GB_PLACEHOLDER: data["ang_gb"],
             config.UEBERN_LFM_PLACEHOLDER: data["uebern_lfm"],
             config.UEBERN_GB_PLACEHOLDER: data["uebern_gb"],
             config.AMT_NAME_PLACEHOLDER: data["amt_name"],
-            config.UEBERN_DATUM_PLACEHOLDER: datetime.strftime(data["uebern_datum"], "%d.%m.%Y"),
+            config.UEBERN_DATUM_PLACEHOLDER: data["uebern_datum"],
             config.DIR_NAME_PLACEHOLDER: data["dir_name"],
             config.STAZH_NAME_PLACEHOLDER: stazh_name,
             config.STAZH_MAIL_PLACEHOLDER: stazh_mail,

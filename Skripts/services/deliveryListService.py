@@ -115,12 +115,31 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         # Lfm und GB aus der ersten Spalte extrahieren
         lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
         gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
-        
+
         if lfm_match:
-            ang_lfm += float(lfm_match.group(1))
-        
+            lfm_value = lfm_match.group(0).replace(" Lfm", "")
+            ang_lfm += float(lfm_value)
+
         if gb_match:
-            ang_gb += float(gb_match.group(1))
+            gb_value = gb_match.group(0).replace(" GB", "")
+            ang_gb += float(gb_value)
+
+    doc_text = doc.Content.Text
+    if config.WORD_DECLINED_TEXT in doc_text:
+        declinedFiles = doc.Tables[3]
+        for i in range(2, declinedFiles.Rows.Count + 1):
+            row = declinedFiles.Rows(i)
+            first_column_data = row.Cells(1).Range.Text.strip()
+            lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
+            gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
+
+            if lfm_match:
+                lfm_value = lfm_match.group(0).replace(" Lfm", "")
+                ang_lfm += float(lfm_value)
+
+            if gb_match:
+                gb_value = gb_match.group(0).replace(" GB", "")
+                ang_gb += float(gb_value)
 
     # Dokument-Eigenschaften zusammenstellen
     doc_props = {
@@ -186,18 +205,11 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
     """Liest die Ablieferungsdaten aus einer Excel-Datei."""
     ws = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
 
-    übern_datum_raw = ws.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or ""
-    
-    if übern_datum_raw:
-        übern_datum = datetime.strftime(übern_datum_raw, "%d.%m.%Y")
-    else:
-        übern_datum = config.UEBERN_DATUM_PLACEHOLDER
-
     doc_props = {
         "DirName": ws.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value or "",
         "AmtName": ws.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value or "",
         "AmtPName": ws.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value or "",
-        "ÜbernDatum": übern_datum,
+        "ÜbernDatum": ws.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or config.UEBERN_DATUM_PLACEHOLDER,
         "AngLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value),
         "ÜbernLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value),
         "AngGB": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value),
