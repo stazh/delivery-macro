@@ -31,8 +31,13 @@ def create_delivery_agreement() -> None:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Word-Datei erstellen und mit Platzhaltern ersetzen
-        word_filename = os.path.join(output_folder, config.CREATED_DELIVERY_AGREEMENT_FILE_NAME)
+        # Sicherstellen, ob die Datei bereits existiert, bevor die Word-Datei erstellt wird
+        document_number = 1
+        word_filename = os.path.join(output_folder, f"{document_number:02d}_{config.CREATED_DELIVERY_AGREEMENT_FILE_NAME}")
+        while os.path.isfile(word_filename):
+            document_number += 1
+            word_filename = os.path.join(output_folder, f"{document_number:02d}_{config.CREATED_DELIVERY_AGREEMENT_FILE_NAME}")
+
         shutil.copy(template_path, word_filename)
         
         if not os.path.exists(word_filename):

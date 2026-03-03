@@ -62,8 +62,12 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Der Name der Ablieferungsverzeichnis-Datei aus config
-        exc_file_path = os.path.join(output_folder, config.DELIVERY_LIST_FILE_NAME)
+        # Der Name der Ablieferungsverzeichnis-Datei aus config und sicherstellen, dass die Datei nicht bereits existiert
+        document_number = 1
+        exc_file_path = os.path.join(output_folder, f"{document_number:02d}_{config.DELIVERY_LIST_FILE_NAME}")
+        while os.path.isfile(exc_file_path):
+            document_number += 1
+            exc_file_path = os.path.join(output_folder, f"{document_number:02d}_{config.DELIVERY_LIST_FILE_NAME}")
         
         # Umwandlung des Zielpfades in einen absoluten Pfad
         exc_file_path = os.path.abspath(exc_file_path)
