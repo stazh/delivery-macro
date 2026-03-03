@@ -1,9 +1,21 @@
-import os 
+import os
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Tuple, Any
 import config
-import xlwings as xw
-import win32com.client as win32comClient
+
+# Versuche, xlwings zu importieren
+try:
+    import xlwings as xw
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}")
+    raise
+
+# Versuche, win32com.client zu importieren
+try:
+    import win32com.client as win32comClient
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}")
+    raise
 
 
 def sheet_exists(sheet_name: str, workbook) -> bool:

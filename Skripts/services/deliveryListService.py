@@ -1,12 +1,29 @@
 import config
 import os
 import re
-from datetime import datetime
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
-import win32com.client as win32
-import openpyxl
-import xlwings as xw
+
+# Versuche, win32com.client zu importieren
+try:
+    import win32com.client as win32
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}")
+    raise
+
+# Versuche, openpyxl zu importieren
+try:
+    import openpyxl
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von openpyxl: {e}")
+    raise
+
+# Versuche, xlwings zu importieren
+try:
+    import xlwings as xw
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}")
+    raise
 
 
 def import_delivery_list_word() -> None:

@@ -2,10 +2,22 @@ import os
 import re
 from tkinter import messagebox
 from datetime import datetime
-import xlwings as xw
 import shutil
-import win32com.client as win32
 import config
+
+# Versuche, xlwings zu importieren
+try:
+    import xlwings as xw
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}")
+    raise
+
+# Versuche, win32com.client zu importieren
+try:
+    import win32com.client as win32
+except ImportError as e:
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}")
+    raise
 
 def create_delivery_agreement() -> None:
     """Erstellt eine Ablieferungsvereinbarung basierend auf den Excel-Daten und einer Word-Vorlage."""
