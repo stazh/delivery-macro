@@ -8,7 +8,6 @@ from tkinter import messagebox
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Pfade für Bibliotheken und Dienste
-libs_path = os.path.join(current_dir, 'libs')
 services_path = os.path.join(current_dir, 'services')
 config_path = os.path.join(current_dir.replace('\main.pyz', ''))
 
@@ -43,7 +42,6 @@ def main() -> None:
     try:
         # Pfade zu den Bibliotheken und Diensten zum sys.path hinzufügen
         sys.path.append(services_path)
-        sys.path.append(libs_path)
         sys.path.append(config_path)
 
         # Kommandozeilenparser initialisieren
