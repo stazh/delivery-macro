@@ -298,13 +298,9 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
         sheet = wb.sheets[config.CURRENT_OFFER_SHEET_NAME]
         g2_values_str = ";".join(values)
         cell_range_g2 = sheet.range(config.SELECTION_REASON_OFFER_LENGTH)
-
-        cell_range_g2.api.Validation.Add(
-            Type=3,
-            AlertStyle=1,
-            Operator=1,
-            Formula1=g2_values_str
-        )
+        cell_range_g2.api.Validation.Delete()
+        cell_range_g2.value = ""
+        cell_range_g2.api.Validation.Add(Type=3, AlertStyle=1, Operator=1, Formula1=g2_values_str)
 
         start_row = 11
         for i, cond_list in enumerate(conditional_values):
@@ -326,6 +322,5 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
                 messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des benannten Bereichs '{name}': {e}")
 
             start_row = end_row + 1
-
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Hinzufügen der Dropdown-Liste: {e}")

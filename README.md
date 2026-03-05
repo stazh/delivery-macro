@@ -9,7 +9,8 @@ This guide explains how to set up and run the **Ablieferungsmakro** Python appli
 - Python **3.11.x** (64-bit)  
 - Windows operating system  
 - Microsoft Excel installed (required for `xlwings`)  
-- Microsoft Word installed (required for `pywin32` Word automation)  
+- Microsoft Word installed (required for `pywin32` Word automation)
+- Python library `openpyxl` (for Excel file handling)
 
 ---
 
@@ -33,7 +34,7 @@ Follow these steps to set up the environment and run the application:
 4. Install required packages:
 
     ```powershell
-    python -m pip install pywin32 xlwings
+    python -m pip install pywin32 xlwings openpyxl
     ```
 
 5. (Optional) If running on DAP or another system, edit `.venv\pyvenv.cfg` and adjust the paths to point to the correct Python installation. This ensures the virtual environment works correctly in that system.
