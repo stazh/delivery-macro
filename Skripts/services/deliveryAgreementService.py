@@ -92,10 +92,8 @@ def import_delivery_data(workbook) -> dict:
     # Wichtige Felder aus dem Excel-Sheet extrahieren
     data = {
         "kuerz": sheet.range(config.CURRENT_OFFER_FIELD_KUERZ).value or config.KUERZ_PLACEHOLDER,
-        "amt_mail": sheet.range(config.CURRENT_OFFER_FIELD_AMT_MAIL).value or config.AMT_MAIL_PLACEHOLDER,
         "amt_zeichen": sheet.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value or config.AMT_ZEICHEN_PLACEHOLDER,
         "amt_pname": sheet.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value or config.AMT_P_NAME_PLACEHOLDER,
-        "amt_name": sheet.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value or config.AMT_NAME_PLACEHOLDER,
         "bes_datum": sheet.range(config.CURRENT_OFFER_FIELD_BES_DATUM).value or config.BES_DATUM_PLACEHOLDER,
         "ang_datum": sheet.range(config.CURRENT_OFFER_FIELD_ANG_DATUM).value or config.ANG_DATUM_PLACEHOLDER,
         "uebern_datum": sheet.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or config.UEBERN_DATUM_PLACEHOLDER,
@@ -178,7 +176,6 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
             config.ERSTELLUNGS_DATUM_PLACEHOLDER: datetime.now().strftime("%d.%m.%Y"),
             config.AMT_ZEICHEN_PLACEHOLDER: data["amt_zeichen"],
             config.AMT_P_NAME_PLACEHOLDER: data["amt_pname"],
-            config.AMT_MAIL_PLACEHOLDER: data["amt_mail"],
             config.BES_DATUM_PLACEHOLDER: data["bes_datum"],
             config.ABL_JAHR_PLACEHOLDER: datetime.now().year,
             config.ANG_DATUM_PLACEHOLDER: data["ang_datum"],
@@ -186,7 +183,6 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
             config.ANG_GB_PLACEHOLDER: data["ang_gb"],
             config.UEBERN_LFM_PLACEHOLDER: data["uebern_lfm"],
             config.UEBERN_GB_PLACEHOLDER: data["uebern_gb"],
-            config.AMT_NAME_PLACEHOLDER: data["amt_name"],
             config.UEBERN_DATUM_PLACEHOLDER: data["uebern_datum"],
             config.DIR_NAME_PLACEHOLDER: data["dir_name"],
             config.STAZH_NAME_PLACEHOLDER: stazh_name,

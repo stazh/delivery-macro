@@ -11,6 +11,16 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 services_path = os.path.join(current_dir, 'services')
 config_path = os.path.join(current_dir.replace('\main.pyz', ''))
 
+import config
+if getattr(sys, 'frozen', False):
+    scripts_dir = os.path.dirname(sys.executable).replace(config.SKRIPTS_FOLDER_PATH, '')
+    PROJECT_DIR = os.path.dirname(scripts_dir)
+else:
+    scripts_dir = os.path.dirname(os.path.abspath(__file__)).replace(config.SKRIPTS_FOLDER_PATH, '')
+    PROJECT_DIR = os.path.dirname(scripts_dir)
+
+os.chdir(PROJECT_DIR)
+
 # Kommando-Mapping für verschiedene Aktionen
 COMMANDS = {
     'import-file-offer': ('fileOfferService', 'import_file_offer_word', 'Importiert Aktenangebot (Word Datei) in die Excel-Tabelle (Angebot_aktuell)'),

@@ -163,7 +163,7 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         # Dokument-Eigenschaften zusammenstellen
         doc_props = {
             "DirName": config.DIR_NAME_PLACEHOLDER,
-            "AmtName": config.AMT_NAME_PLACEHOLDER,
+            "AmtZeichen": config.AMT_ZEICHEN_PLACEHOLDER,
             "AmtPName": config.AMT_P_NAME_PLACEHOLDER,
             "ÜbernDatum": config.UEBERN_DATUM_PLACEHOLDER,
             "AngLfm": ang_lfm,
@@ -229,14 +229,14 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
 
     doc_props = {
         "DirName": ws.range(config.CURRENT_OFFER_FIELD_DIR_NAME).value or "",
-        "AmtName": ws.range(config.CURRENT_OFFER_FIELD_AMT_NAME).value or "",
+        "AmtZeichen": ws.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value or "",
         "AmtPName": ws.range(config.CURRENT_OFFER_FIELD_AMT_P_NAME).value or "",
         "ÜbernDatum": ws.range(config.CURRENT_OFFER_FIELD_UEBERN_DATUM).value or config.UEBERN_DATUM_PLACEHOLDER,
         "AngLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_LFM).value),
         "ÜbernLfm": "0" if ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_UEBERN_LFM).value),
         "AngGB": "0" if ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_ANG_GB).value),
         "ÜbernGB": "0" if ws.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value == 0.0 else str(ws.range(config.CURRENT_OFFER_FIELD_UEBERN_GB).value),
-        "AblNummer": ws.range(config.CURRENT_OFFER_FIELD_AMT_ZEICHEN).value or ""
+        "AblNummer": ws.range(config.CURRENT_OFFER_FIELD_ABL_NUMMER).value or ""
     }
 
     table_data = []
@@ -262,13 +262,13 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
 def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
     """Ersetzt Platzhalter in einer Excel-Tabelle durch tatsächliche Werte."""
     placeholders = [
-        config.DIR_NAME_PLACEHOLDER, config.AMT_NAME_PLACEHOLDER, config.AMT_P_NAME_PLACEHOLDER, config.UEBERN_DATUM_PLACEHOLDER,
+        config.DIR_NAME_PLACEHOLDER, config.AMT_ZEICHEN_PLACEHOLDER, config.AMT_P_NAME_PLACEHOLDER, config.UEBERN_DATUM_PLACEHOLDER,
         config.ANG_LFM_PLACEHOLDER, config.ANG_GB_PLACEHOLDER, config.UEBERN_LFM_PLACEHOLDER, config.UEBERN_GB_PLACEHOLDER, config.ABL_NUMMER_PLACEHOLDER
     ]
     
     values = [
         str(doc_props["DirName"]),
-        str(doc_props["AmtName"]),
+        str(doc_props["AmtZeichen"]),
         str(doc_props["AmtPName"]),
         str(doc_props["ÜbernDatum"]),
         str(doc_props["AngLfm"]),
