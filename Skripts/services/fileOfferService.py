@@ -293,34 +293,88 @@ def create_template() -> None:
 
 
 def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
-    """Fügt Dropdown-Listen in das Excel-Arbeitsblatt ein."""
+    """Erstellt benannte Bereiche für Selektionslisten auf einem versteckten Sheet und setzt das Dropdown."""
     try:
-        sheet = wb.sheets[config.CURRENT_OFFER_SHEET_NAME]
-        g2_values_str = ";".join(values)
-        cell_range_g2 = sheet.range(config.SELECTION_REASON_OFFER_LENGTH)
-        cell_range_g2.api.Validation.Delete()
-        cell_range_g2.value = ""
-        cell_range_g2.api.Validation.Add(Type=3, AlertStyle=1, Operator=1, Formula1=g2_values_str)
+        hidden_sheet_name = config.DROPDOWN_DATA_SHEET_NAME
 
-        start_row = 11
+        # Hidden sheet holen oder erstellen
+        try:
+            hidden_sheet = wb.sheets[hidden_sheet_name]
+            hidden_sheet.clear()
+        except Exception:
+            hidden_sheet = wb.sheets.add(hidden_sheet_name)
+
+        hidden_sheet.visible = False
+
+        start_row = 1
+
+        # Selektion Bewertungsentscheid erstellen
+        vertical_main = [[v] for v in values]
+        end_row = start_row + len(vertical_main) - 1
+
+        hidden_sheet.range(f"A{start_row}:A{end_row}").value = vertical_main
+
+        try:
+            if config.SELECTION_ASSESMENT_DECISION_NAME in [n.name for n in wb.names]:
+                wb.names[config.SELECTION_ASSESMENT_DECISION_NAME].delete()
+
+            wb.names.add(
+                config.SELECTION_ASSESMENT_DECISION_NAME,
+                f"='{hidden_sheet_name}'!$A${start_row}:$A${end_row}"
+            )
+
+        except Exception as e:
+            messagebox.showerror(
+                "Fehler",
+                f"Fehler beim Erstellen des Bereichs '{config.SELECTION_ASSESMENT_DECISION_NAME}': {e}"
+            )
+
+        # Selektion Bewertungsgrund erstellen
+        start_row = end_row + 2
+
         for i, cond_list in enumerate(conditional_values):
             if not cond_list:
                 continue
 
             name = values[i].replace(" ", "_").replace("-", "_")
-            vertical_list = [[val] for val in cond_list]
-            end_row = start_row + len(vertical_list) - 1
-            range_sheet = f"{config.SELECTION_SECTION}{start_row}:{config.SELECTION_SECTION}{end_row}"
-            range_name = f"${config.SELECTION_SECTION}${start_row}:${config.SELECTION_SECTION}${end_row}"
 
-            sheet.range(range_sheet).value = vertical_list
+            vertical_list = [[v] for v in cond_list]
+            end_row = start_row + len(vertical_list) - 1
+
+            hidden_sheet.range(f"A{start_row}:A{end_row}").value = vertical_list
+
             try:
                 if name in [n.name for n in wb.names]:
                     wb.names[name].delete()
-                wb.names.add(name, f'={config.CURRENT_OFFER_SHEET_NAME}!{range_name}')
-            except Exception as e:
-                messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des benannten Bereichs '{name}': {e}")
 
-            start_row = end_row + 1
+                wb.names.add(
+                    name,
+                    f"='{hidden_sheet_name}'!$A${start_row}:$A${end_row}"
+                )
+
+            except Exception as e:
+                messagebox.showerror(
+                    "Fehler",
+                    f"Fehler beim Hinzufügen des Bereichs '{name}': {e}"
+                )
+
+            start_row = end_row + 2
+
+        # Dropdown Bewertungsentscheid in Excel setzen
+        sheet = wb.sheets[config.CURRENT_OFFER_SHEET_NAME]
+        cell_range = sheet.range(config.SELECTION_REASON_OFFER_LENGTH)
+
+        cell_range.api.Validation.Delete()
+
+        cell_range.api.Validation.Add(
+            Type=3,
+            AlertStyle=1,
+            Operator=1,
+            Formula1=f"={config.SELECTION_ASSESMENT_DECISION_NAME}"
+        )
+
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Hinzufügen der Dropdown-Liste: {e}")
+        messagebox.showerror(
+            "Fehler",
+            f"Fehler beim Erstellen der Selektionsbereiche: {e}"
+        )

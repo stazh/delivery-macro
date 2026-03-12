@@ -15,17 +15,18 @@ CONTACT_SHEET_NAME = "Kontakte"
 CURRENT_OFFER_SHEET_NAME = "Angebot_aktuell"
 SELECTION_FIELDS_SHEET_NAME = "Auswahlfelder"
 DELIVERY_LIST_SHEET_NAME = "Ablieferungsverzeichnis"
+DROPDOWN_DATA_SHEET_NAME = "dropdown_data"
 
 # -----------------------------------------
 # 3. Aktuelles Angebot: Auswahl
 # -----------------------------------------
 SELECTION_REASON_OFFER_LENGTH = "G2:G6268"
 SELECTION_REASON_OFFER_RANGE = "A1:D1"
-SELECTION_SECTION = "AZ"
 SELECTION_COMPLETE_TAKEOVER_FIELDS = "A2:A11"
 SELECTION_PARTIAL_TAKEOVER_FIELDS = "B2:B5"
 SELECTION_NO_TAKEOVER_FIELDS = "C2:C9"
 SELECTION_CANT_BE_OFFERED_FIELDS = "D2"
+SELECTION_ASSESMENT_DECISION_NAME = "assessmentDecision"
 
 # -----------------------------
 # 4. Zellenbezüge
@@ -47,7 +48,7 @@ CURRENT_OFFER_FIELD_ANG_GB = "O4"
 CURRENT_OFFER_FIELD_UEBERN_GB = "O5"
 CURRENT_OFFER_FIELD_UEBERN_LFM = "O3"
 DELIVERY_LIST_PLACEHOLDER_RANGE = "A1:G20"
-DATA_CONTACT_RANGE = "A1:Z1"
+DATA_CONTACT_RANGE = "A1:M1"
 
 # ----------------------
 # 5. Platzhalter

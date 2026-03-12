@@ -114,39 +114,24 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     """Liest die Daten aus einer Word-Datei."""
     word = win32.DispatchEx("Word.Application")
     word.visible = False
-    word.Documents.Open(file_path)
 
-    table_data = []
-    raw_data = []
-    doc = word.ActiveDocument
-    table = doc.Tables[2]
-    ang_lfm = 0
-    ang_gb = 0
+    try:
+        doc = word.Documents.Open(os.path.abspath(file_path))
 
-    for i in range(2, table.Rows.Count + 1):
-        row = table.Rows(i)
-        first_column_data = row.Cells(1).Range.Text.strip()
-        third_column_data = row.Cells(3).Range.Text.strip()
-        raw_data.append([first_column_data, third_column_data])
+        table_data = []
+        raw_data = []
+        doc = word.ActiveDocument
+        table = doc.Tables[2]
+        ang_lfm = 0
+        ang_gb = 0
 
-        # Lfm und GB aus der ersten Spalte extrahieren
-        lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
-        gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
-
-        if lfm_match:
-            lfm_value = lfm_match.group(0).replace(" Lfm", "")
-            ang_lfm += float(lfm_value)
-
-        if gb_match:
-            gb_value = gb_match.group(0).replace(" GB", "")
-            ang_gb += float(gb_value)
-
-    doc_text = doc.Content.Text
-    if config.WORD_DECLINED_TEXT in doc_text:
-        declinedFiles = doc.Tables[3]
-        for i in range(2, declinedFiles.Rows.Count + 1):
-            row = declinedFiles.Rows(i)
+        for i in range(2, table.Rows.Count + 1):
+            row = table.Rows(i)
             first_column_data = row.Cells(1).Range.Text.strip()
+            third_column_data = row.Cells(3).Range.Text.strip()
+            raw_data.append([first_column_data, third_column_data])
+
+            # Lfm und GB aus der ersten Spalte extrahieren
             lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
             gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
 
@@ -158,21 +143,41 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
                 gb_value = gb_match.group(0).replace(" GB", "")
                 ang_gb += float(gb_value)
 
-    # Dokument-Eigenschaften zusammenstellen
-    doc_props = {
-        "DirName": config.DIR_NAME_PLACEHOLDER,
-        "AmtName": config.AMT_NAME_PLACEHOLDER,
-        "AmtPName": config.AMT_P_NAME_PLACEHOLDER,
-        "ÜbernDatum": config.UEBERN_DATUM_PLACEHOLDER,
-        "AngLfm": ang_lfm,
-        "AngGB": ang_gb,
-        "ÜbernLfm": "",
-        "ÜbernGB": "",
-        "AblNummer": config.ABL_NUMMER_PLACEHOLDER
-    }
+        doc_text = doc.Content.Text
+        if config.WORD_DECLINED_TEXT in doc_text:
+            declinedFiles = doc.Tables[3]
+            for i in range(2, declinedFiles.Rows.Count + 1):
+                row = declinedFiles.Rows(i)
+                first_column_data = row.Cells(1).Range.Text.strip()
+                lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
+                gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
 
-    table_data = convert_word_table_data(raw_data)
-    word.Quit()
+                if lfm_match:
+                    lfm_value = lfm_match.group(0).replace(" Lfm", "")
+                    ang_lfm += float(lfm_value)
+
+                if gb_match:
+                    gb_value = gb_match.group(0).replace(" GB", "")
+                    ang_gb += float(gb_value)
+
+        # Dokument-Eigenschaften zusammenstellen
+        doc_props = {
+            "DirName": config.DIR_NAME_PLACEHOLDER,
+            "AmtName": config.AMT_NAME_PLACEHOLDER,
+            "AmtPName": config.AMT_P_NAME_PLACEHOLDER,
+            "ÜbernDatum": config.UEBERN_DATUM_PLACEHOLDER,
+            "AngLfm": ang_lfm,
+            "AngGB": ang_gb,
+            "ÜbernLfm": "",
+            "ÜbernGB": "",
+            "AblNummer": config.ABL_NUMMER_PLACEHOLDER
+        }
+
+        table_data = convert_word_table_data(raw_data)
+        word.Quit()
+    except Exception as e:
+        word.Quit()
+        messagebox.showerror("Fehler", f"Fehler beim Lesen der Word-Datei: {e}")
 
     return doc_props, table_data
 

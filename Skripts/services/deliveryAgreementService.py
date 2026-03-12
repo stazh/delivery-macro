@@ -123,7 +123,6 @@ def import_delivery_data(workbook) -> dict:
             "ueber_lfm": sheet.range(f"J{row}").value or config.DEFAULT_VALUE_LFM_GB,
             "ueber_gb": sheet.range(f"K{row}").value or config.DEFAULT_VALUE_LFM_GB
         }
-
         # Aktengruppen erstellen
         act_group = f"{row_data['inhalt']}, {row_data['zeitraum']}," 
         if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB and f"{row_data['gb']}" != config.DEFAULT_VALUE_LFM_GB:
@@ -131,7 +130,6 @@ def import_delivery_data(workbook) -> dict:
         else:
             lfm_or_gb = f"{row_data['lfm']} Lfm" if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB else f"{row_data['gb']} GB"
             act_group += f" {lfm_or_gb}"
-    
         act_group += f" ({row_data['medium']})"
         
         vereinbarung = f"{row_data['bewertung']} \nBegründung: {row_data['begruendung']} \n{row_data['begruendung_kommentar']}"
@@ -155,13 +153,25 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
         stazh_name, stazh_mail, stazh_nummer = config.STAZH_NAME_PLACEHOLDER, config.STAZH_MAIL_PLACEHOLDER, config.STAZH_NUMMER_PLACEHOLDER
         
         # Findet den entsprechenden Kontakt in der Tabelle und aktualisiert die Werte
+        found = False
         for cell in header_range:
             if data["kuerz"].lower() in str(cell.value).lower():
                 column_index = cell.column
+
                 stazh_name = contact_sheet.cells(2, column_index).value or config.STAZH_NAME_PLACEHOLDER
                 stazh_mail = contact_sheet.cells(3, column_index).value or config.STAZH_MAIL_PLACEHOLDER
                 stazh_nummer = contact_sheet.cells(4, column_index).value or config.STAZH_NUMMER_PLACEHOLDER
+
+                found = True
                 break
+
+        # Wenn nichts gefunden wurde -> Abbruch
+        if not found:
+            messagebox.showerror(
+                "Fehler",
+                f"Kein Kontakt für '{data['kuerz']}' gefunden."
+            )
+            return
 
         replacements = {
             config.KUERZ_PLACEHOLDER: data["kuerz"],
