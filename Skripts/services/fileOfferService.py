@@ -34,7 +34,7 @@ def import_file_offer_word() -> None:
 
     try:
         app = xw.apps.active
-        app.visible = False
+        app.screen_updating = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
         messagebox.showerror("Excel Fehler", f"Es konnte keine Excel-Anwendung gestartet werden: {e}")
@@ -180,10 +180,11 @@ def create_template() -> None:
     """Erstellt eine Excel-Vorlage und fügt Dropdown-Listen hinzu."""
     try:
         app = xw.apps.active
-        app.visible = False
+        app.screen_updating = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
         
-        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
+        stammdaten_workbook = app.books.open(config.DATA_FILE_PATH)
+
         dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
         select_fields = stammdaten_workbook.sheets[config.SELECTION_FIELDS_SHEET_NAME]
         

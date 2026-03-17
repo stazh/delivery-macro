@@ -48,12 +48,14 @@ def import_delivery_list_excel() -> None:
 
     try:
         app = xw.apps.active
+        app.screen_updating
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
         messagebox.showerror("Fehler", "Excel‑Instanz konnte nicht gefunden werden oder Datei ist nicht offen.")
         return
 
     try:
+        app.screen_updating = True
         doc_props, table_data = read_excel_data(workbook)
         create_delivery_list(doc_props, table_data)
     except Exception as e:
@@ -63,9 +65,11 @@ def import_delivery_list_excel() -> None:
 def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]]) -> None:
     """Erstellt die Ablieferungsverzeichnis in einer Excel-Datei."""
     try:
-        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
+        app = xw.apps.active
+        app.screen_updating = False
+        stammdaten_workbook = app.books.open(config.DATA_FILE_PATH)
         dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
-        
+        messagebox.__loader__
         template_rel = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_LIST).value
         stammdaten_workbook.close()
         exc_file = os.path.abspath(template_rel)
@@ -91,11 +95,11 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
 
         # Lade die Vorlage und speichere sie im Zielordner
         wb = openpyxl.load_workbook(exc_file)
-        wb.visible = True
         wb.save(exc_file_path)
         
         # Öffne die neu gespeicherte Excel-Datei
-        workbook = xw.Book(exc_file_path)
+        app.screen_updating = True
+        workbook = app.books.open(exc_file_path)
         ws = workbook.sheets[config.DELIVERY_LIST_SHEET_NAME]
         
         # Ersetze Platzhalter in der Excel-Datei

@@ -24,10 +24,9 @@ def create_delivery_agreement() -> None:
     try:
         # Excel- und Word-Initialisierung
         app = xw.apps.active
-        app.visible = False
+        app.screen_updating = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
-        stammdaten_workbook = xw.Book(config.DATA_FILE_PATH)
-        stammdaten_workbook.visible = False
+        stammdaten_workbook = app.books.open(config.DATA_FILE_PATH)
         
         # Vorlagenpfad auslesen und sicherstellen, dass die Datei existiert
         template_path = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME].range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
