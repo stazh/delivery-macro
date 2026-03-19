@@ -147,23 +147,6 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
                 gb_value = gb_match.group(0).replace(" GB", "")
                 ang_gb += float(gb_value)
 
-        doc_text = doc.Content.Text
-        if config.WORD_DECLINED_TEXT in doc_text:
-            declinedFiles = doc.Tables[3]
-            for i in range(2, declinedFiles.Rows.Count + 1):
-                row = declinedFiles.Rows(i)
-                first_column_data = row.Cells(1).Range.Text.strip()
-                lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
-                gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
-
-                if lfm_match:
-                    lfm_value = lfm_match.group(0).replace(" Lfm", "")
-                    ang_lfm += float(lfm_value)
-
-                if gb_match:
-                    gb_value = gb_match.group(0).replace(" GB", "")
-                    ang_gb += float(gb_value)
-
         # Dokument-Eigenschaften zusammenstellen
         doc_props = {
             "DirName": config.DIR_NAME_PLACEHOLDER,
@@ -197,14 +180,18 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
         medium = ""
 
         # Jahr und Medium extrahieren
-        year_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR}', row[0])
-        if year_match:
-            year_index = year_match.start()
-            parts = row[0][:year_index].strip(), row[0][year_index:].strip()
-            inhalt = parts[0].removesuffix(',')
-            zeitraum = parts[1].split(',')[1].strip()
+        year_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR, row[0]))
 
-            medium_match = re.search(fr'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM}', row[0])
+        if year_matches:
+            last_year_match = year_matches[-1]
+
+            year_index = last_year_match.start()
+            parts = row[0][:year_index].strip(), row[0][year_index:].strip()
+
+            inhalt = parts[0].removesuffix(',')
+            zeitraum = parts[1].split(',')[1].strip() if ',' in parts[1] else parts[1].strip()
+
+            medium_match = re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM, row[0])
             if medium_match:
                 medium = medium_match.group(1).strip()
 
@@ -219,8 +206,25 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
             number_part = row[1]
             medium_part = ""
 
-        lfm, gb = number_part.split('/') if '/' in number_part else ("0", "0")
-        if f"{lfm}" == config.DEFAULT_VALUE_LFM_GB and f"{gb}" == config.DEFAULT_VALUE_LFM_GB:
+        lfm = config.DEFAULT_VALUE_LFM_GB
+        gb = config.DEFAULT_VALUE_LFM_GB
+
+        if '/' in number_part:
+            parts = [p.strip() for p in number_part.split('/')]
+            lfm = parts[0].replace(" Lfm", "").strip()
+            gb = parts[1].replace(" GB", "").strip()
+        else:
+            if "Lfm" in number_part:
+                lfm = number_part.replace(" Lfm", "").strip()
+                gb = "0"
+            elif "GB" in number_part:
+                gb = number_part.replace(" GB", "").strip()
+                lfm = "0"
+            else:
+                lfm = "0"
+                gb = "0"
+
+        if lfm == config.DEFAULT_VALUE_LFM_GB and gb == config.DEFAULT_VALUE_LFM_GB:
             continue
 
         table_data.append([inhalt, zeitraum, lfm, gb, medium_part.replace('(', '').replace(')', '')])

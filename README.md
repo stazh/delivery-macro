@@ -48,6 +48,7 @@ Follow these steps to set up the environment and run the application:
 - Always ensure Excel and Word are installed and accessible.  
 - If file paths change (e.g., moving the script or data files), update the paths in `pyvenv.cfg` in the .venv folder.  
 - The application interacts with Excel sheets and Word documents, so make sure all required files exist at the specified paths.
+- When you run the script for the first time, a message will appear asking if you trust the publisher and want to run the script. You need to choose A for Always so that this message will not appear again.
 
 ---
 

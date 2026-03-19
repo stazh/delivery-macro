@@ -80,7 +80,6 @@ DEFAULT_VALUE_LFM_GB = "0"
 # ------------------------
 # 7. Reguläre Ausdrücke
 # ------------------------
-REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES = ",\\s*(\\d{4})"
 REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR = ",\s*(\d{4}(?:\s*[-+]\s*\d{4})*)"
 REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM = "\(([^)]+)\)(?!.*\()"
 REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB = "(\d+(\.\d+)?)\s*GB"
@@ -93,6 +92,7 @@ WORD_SHOW_DECLINED_LIST = "Aufbewahrungsfrist noch laufend"
 WORD_DECLINED_TEXT = "Die Aufbewahrungsfrist der folgenden Aktengruppen ist noch nicht abgelaufen. Diese müssen weiterhin aufbewahrt und bei Ablauf der Aufbewahrungsfrist erneut dem StAZH angeboten werden:"
 SELECTION_REASON_DECLINED_TEXT = "Darf noch nicht angeboten werden"
 SELECTION_REASON_NO_TAKEOVER_TEXT = "keine Übernahme"
+SELECTION_REASONS = ["keine Übernahme", "vollständige Übernahme", "teilweise Übernahme"]
 
 # ----------------------------------------------
 # 9. Indizes der Tabellen im Liefervereinbarungsdokument

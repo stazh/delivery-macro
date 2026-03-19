@@ -120,33 +120,39 @@ def import_delivery_data(workbook) -> dict:
             "ueber_lfm": sheet.range(f"J{row}").value or config.DEFAULT_VALUE_LFM_GB,
             "ueber_gb": sheet.range(f"K{row}").value or config.DEFAULT_VALUE_LFM_GB
         }
-        # Aktengruppen erstellen
-        act_group = f"{row_data['inhalt']},{row_data['zeitraum']},"
+
+        act_group = f"{row_data['inhalt']},\n{row_data['zeitraum']},"
         declined_act_group = act_group
+
+        # Hinzufügen von Lfm/GB, abhängig von den Werten
         if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB and f"{row_data['gb']}" != config.DEFAULT_VALUE_LFM_GB:
             act_group += f" {row_data['lfm']} Lfm, {row_data['gb']} GB"
         else:
             lfm_or_gb = f"{row_data['lfm']} Lfm" if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB else f"{row_data['gb']} GB"
             declined_amount = lfm_or_gb
             act_group += f" {lfm_or_gb}"
+
         act_group += f" ({row_data['medium']})"
-        
-        vereinbarung = f"{row_data['bewertung']}\nBegründung: {row_data['begruendung']}\n{row_data['begruendung_kommentar']}"
+
+        vereinbarung = (
+            f"{row_data['bewertung']}\n"
+            f"Begründung: {row_data['begruendung']}\n"
+            f"{row_data['begruendung_kommentar']}"
+        )
 
         # Je nach Bewertung in die entsprechende Tabelle einfügen
         if row_data['begruendung'] == config.WORD_SHOW_DECLINED_LIST:
-            declined_amount = ""
             if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB and f"{row_data['gb']}" != config.DEFAULT_VALUE_LFM_GB:
-                declined_amount = f"{row_data['lfm']}/{row_data['gb']}"
+                declined_amount = f"{row_data['lfm']} Lfm/{row_data['gb']} GB"
             else:
                 declined_amount = f"{row_data['lfm']} Lfm" if f"{row_data['lfm']}" != config.DEFAULT_VALUE_LFM_GB else f"{row_data['gb']} GB"
 
             medium = f" ({row_data['medium']})" if row_data['medium'] and row_data['medium'].strip() != "" else ""
+            
             declined_table_data.append([declined_act_group.removesuffix(","), f"{declined_amount}{medium}"])
         else:
-            accepted_amount = ""
             if f"{row_data['ueber_lfm']}" != config.DEFAULT_VALUE_LFM_GB and f"{row_data['ueber_gb']}" != config.DEFAULT_VALUE_LFM_GB:
-                accepted_amount = f"{row_data['ueber_lfm']}/{row_data['ueber_gb']}"
+                accepted_amount = f"{row_data['ueber_lfm']} Lfm/{row_data['ueber_gb']} GB"
             else:
                 if f"{row_data['ueber_lfm']}" != config.DEFAULT_VALUE_LFM_GB:
                     accepted_amount = f"{row_data['ueber_lfm']} Lfm"
@@ -156,6 +162,7 @@ def import_delivery_data(workbook) -> dict:
                     accepted_amount = config.DEFAULT_VALUE_LFM_GB
 
             medium = f" ({row_data['ueber_medium']})" if row_data['ueber_medium'] and row_data['ueber_medium'].strip() != "" else ""
+            
             table_data.append([act_group, vereinbarung, f"{accepted_amount}{medium}"])
 
         row += 1
@@ -234,8 +241,6 @@ def insert_table_data(word, table_data, declined_table_data) -> None:
         for i, row in enumerate(table_data):
             acceptedFiles.Rows.Add()
             # Bearbeitet den Text in der ersten Spalte, wenn er mit dem Muster übereinstimmt
-            if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
-                row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r',\n\1', row[0])
             acceptedFiles.Cell(i + 2, 1).Range.Text = row[0]
             acceptedFiles.Cell(i + 2, 2).Range.Text = row[1]
             acceptedFiles.Cell(i + 2, 3).Range.Text = row[2]
@@ -248,13 +253,25 @@ def insert_table_data(word, table_data, declined_table_data) -> None:
             # Fügt abgelehnte Dateien in die Tabelle ein
             for i, row in enumerate(declined_table_data):
                 declinedFiles.Rows.Add()
-                if re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, row[0]):
-                    row[0] = re.sub(config.REGEX_WORD_DELIVERY_AGREEMENT_ACCEPTED_DECLINED_FILES, r',\n\1', row[0])
                 declinedFiles.Cell(i + 2, 1).Range.Text = row[0]
                 declinedFiles.Cell(i + 2, 2).Range.Text = row[1]
         else:
             declinedFiles.Delete()
             word.Selection.Find.Execute(declinedText, False, False, False, False, False, True, 1, False, "", 2)
+
+        for text in config.SELECTION_REASONS:
+            for row in acceptedFiles.Rows:
+                cell = row.Cells(2)
+                rng = cell.Range
+                find = rng.Find
+                find.Text = text
+                find.Forward = True
+                find.Wrap = 0
+                find.MatchCase = False
+                find.MatchWholeWord = True
+
+                if find.Execute():
+                    find.Parent.Font.Bold = -1
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")
