@@ -66,9 +66,10 @@ def create_delivery_agreement() -> None:
             word = win32.DispatchEx("Word.Application")
             word.visible = True
             word.Documents.Open(word_filename_abs)
+            document = word.Documents.Open(word_filename_abs)
 
             # Platzhalter ersetzen und Tabellen einfügen
-            replace_placeholders_in_doc(word, data, stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME])
+            replace_placeholders_in_doc(word, data, stammdaten_workbook.sheets[config.CONTACT_SHEET_NAME], document)
             insert_table_data(word, table_data, declined_table_data)
 
         except Exception as e:
@@ -83,6 +84,25 @@ def create_delivery_agreement() -> None:
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}")
 
+def safe_str(value):
+    if value is None:
+        return ''
+    if isinstance(value, (int, float)):
+        if float(value).is_integer():
+            return str(int(value))
+        else:
+            return str(value)
+    return str(value)
+
+def safe_float(value, ndigits=2):
+    if value is None:
+        return config.DEFAULT_VALUE_LFM_GB
+    if isinstance(value, (int, float)):
+        return round(value, ndigits)
+    try:
+        return round(float(value), ndigits)
+    except (ValueError, TypeError):
+        return config.DEFAULT_VALUE_LFM_GB
 
 def import_delivery_data(workbook) -> dict:
     """Importiert relevante Daten aus dem aktuellen Angebot (Excel)."""
@@ -108,18 +128,24 @@ def import_delivery_data(workbook) -> dict:
     while sheet.range(f"A{row}").value:  # Durchläuft alle Zeilen
         # Jede Zeile als Dictionary abspeichern
         row_data = {
-            "inhalt": sheet.range(f"A{row}").value or '',
-            "zeitraum": sheet.range(f"B{row}").value or '',
-            "lfm": sheet.range(f"C{row}").value or config.DEFAULT_VALUE_LFM_GB,
-            "gb": sheet.range(f"D{row}").value or config.DEFAULT_VALUE_LFM_GB,
-            "medium": sheet.range(f"E{row}").value or '',
-            "ueber_medium": sheet.range(f"L{row}").value or '',
-            "bewertung": sheet.range(f"G{row}").value or '',
-            "begruendung": sheet.range(f"H{row}").value or '',
-            "begruendung_kommentar": sheet.range(f"I{row}").value or '',
-            "ueber_lfm": sheet.range(f"J{row}").value or config.DEFAULT_VALUE_LFM_GB,
-            "ueber_gb": sheet.range(f"K{row}").value or config.DEFAULT_VALUE_LFM_GB
+            "inhalt": safe_str(sheet.range(f"A{row}").value),
+            "zeitraum": safe_str(sheet.range(f"B{row}").value),
+            "lfm": safe_float(sheet.range(f"C{row}").value),
+            "gb": safe_float(sheet.range(f"D{row}").value),
+            "medium": safe_str(sheet.range(f"E{row}").value),
+            "ueber_medium": safe_str(sheet.range(f"L{row}").value),
+            "bewertung": safe_str(sheet.range(f"G{row}").value),
+            "begruendung": safe_str(sheet.range(f"H{row}").value),
+            "begruendung_kommentar": safe_str(sheet.range(f"I{row}").value),
+            "ueber_lfm": safe_float(sheet.range(f"J{row}").value),
+            "ueber_gb": safe_float(sheet.range(f"K{row}").value)
         }
+
+        if row_data['lfm'] == config.DEFAULT_VALUE_LFM_GB and row_data['gb'] == config.DEFAULT_VALUE_LFM_GB:
+            table_data.append([row_data['inhalt'], '', ''])
+            row += 1
+            continue
+
 
         act_group = f"{row_data['inhalt']},\n{row_data['zeitraum']},"
         declined_act_group = act_group
@@ -170,7 +196,7 @@ def import_delivery_data(workbook) -> dict:
     return data, table_data, declined_table_data
 
 
-def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
+def replace_placeholders_in_doc(word, data: dict, contact_sheet, document) -> None:
     """Ersetzt die Platzhalter im Word-Dokument mit den tatsächlichen Werten."""
     try:
         header_range = contact_sheet.range(config.DATA_CONTACT_RANGE)
@@ -219,6 +245,14 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet) -> None:
         # Ersetzen der Platzhalter
         for placeholder, value in replacements.items():
             word.Selection.Find.Execute(placeholder, False, False, False, False, False, True, 1, False, value, 2)
+
+        today = datetime.today().strftime("%d.%m.%Y")
+        book_mark_name = config.ERSTELLUNGS_DATUM_PLACEHOLDER.replace("<", "").replace(">", "")
+
+        if document.Bookmarks.Exists(book_mark_name):
+            book_mark_range = document.Bookmarks(book_mark_name).Range
+            book_mark_range.Text = today
+            document.Bookmarks.Add(book_mark_name, book_mark_range)
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter in Word: {e}")

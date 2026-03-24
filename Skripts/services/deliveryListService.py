@@ -69,7 +69,6 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         app.screen_updating = False
         stammdaten_workbook = app.books.open(config.DATA_FILE_PATH)
         dateipfade_sheet = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME]
-        messagebox.__loader__
         template_rel = dateipfade_sheet.range(config.DATA_PATH_FIELD_DELIVERY_LIST).value
         stammdaten_workbook.close()
         exc_file = os.path.abspath(template_rel)
@@ -126,6 +125,7 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         raw_data = []
         doc = word.ActiveDocument
         table = doc.Tables[2]
+        declinedTable = doc.Tables[3]
         ang_lfm = 0
         ang_gb = 0
 
@@ -136,16 +136,32 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
             raw_data.append([first_column_data, third_column_data])
 
             # Lfm und GB aus der ersten Spalte extrahieren
-            lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', first_column_data)
-            gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', first_column_data)
+            lfm_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM, first_column_data))
+            gb_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB, first_column_data))
+
+            if len(lfm_matches) > 0:
+                lfm_value = lfm_matches[-1].group(0).replace(" Lfm", "")
+                ang_lfm += round(float(lfm_value), 2)
+
+            if len(gb_matches) > 0:
+                gb_value = gb_matches[-1].group(0).replace(" GB", "")
+                ang_gb += round(float(gb_value), 2)
+
+        for i in range(2, declinedTable.Rows.Count + 1):
+            row = declinedTable.Rows(i)
+            second_column_data = row.Cells(2).Range.Text.strip()
+
+            # Lfm und GB aus der zweiten Spalte extrahieren
+            lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', second_column_data)
+            gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', second_column_data)
 
             if lfm_match:
                 lfm_value = lfm_match.group(0).replace(" Lfm", "")
-                ang_lfm += float(lfm_value)
+                ang_lfm += round(float(lfm_value), 2)
 
             if gb_match:
                 gb_value = gb_match.group(0).replace(" GB", "")
-                ang_gb += float(gb_value)
+                ang_gb += round(float(gb_value), 2)
 
         # Dokument-Eigenschaften zusammenstellen
         doc_props = {
@@ -174,7 +190,7 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
     table_data = []
     for row in raw_data:
         inhalt = row[0]
-        zeitraum = row[1]
+        zeitraum = ""
         lfm = "0"
         gb = "0"
         medium = ""
@@ -194,6 +210,10 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
             medium_match = re.search(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM, row[0])
             if medium_match:
                 medium = medium_match.group(1).strip()
+
+        if zeitraum == '':
+            table_data.append([inhalt, '', '', '', ''])
+            continue
 
         # Bereinige den Text in row[1]
         row[1] = row[1].strip().replace('\n', '').replace('\r', '').replace('\x07', '')
@@ -215,10 +235,10 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
             gb = parts[1].replace(" GB", "").strip()
         else:
             if "Lfm" in number_part:
-                lfm = number_part.replace(" Lfm", "").strip()
+                lfm = number_part.replace(" Lfm", "").strip() if number_part.replace(" Lfm", "").strip() != '0.0' else config.DEFAULT_VALUE_LFM_GB
                 gb = "0"
             elif "GB" in number_part:
-                gb = number_part.replace(" GB", "").strip()
+                gb = number_part.replace(" GB", "").strip() if number_part.replace(" GB", "").strip() != '0.0' else config.DEFAULT_VALUE_LFM_GB
                 lfm = "0"
             else:
                 lfm = "0"
@@ -255,14 +275,18 @@ def read_excel_data(workbook) -> tuple[Dict[str, Any], List[List[str]]]:
         for row, accepted_row, reason in zip(rows, accepted_data_row, reason_row):
             if all(cell is None or str(cell).strip() == "" for cell in row) or (reason == config.SELECTION_REASON_DECLINED_TEXT) or (reason == config.SELECTION_REASON_NO_TAKEOVER_TEXT):
                 continue
-            
+
             lfm_accepted = accepted_row[0] if accepted_row[0] is not None else "0"
             gb_accepted = accepted_row[1] if accepted_row[1] is not None else "0"
             medium_accepted = accepted_row[2] if accepted_row[2] is not None else ""
+
+            if lfm_accepted == "0" and gb_accepted == "0":
+                lfm_accepted = ''
+                gb_accepted = ''
+
             row[2] = lfm_accepted
             row[3] = gb_accepted
             row[4] = medium_accepted
-
             table_data.append(row)
     return doc_props, table_data
 
