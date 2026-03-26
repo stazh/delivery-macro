@@ -2,19 +2,20 @@ import os
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Tuple, Any
 import config
+from app import root
 
 # Versuche, xlwings zu importieren
 try:
     import xlwings as xw
 except ImportError as e:
-    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}")
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}", parent=root)
     raise
 
 # Versuche, win32com.client zu importieren
 try:
     import win32com.client as win32comClient
 except ImportError as e:
-    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}")
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}", parent=root)
     raise
 
 
@@ -37,18 +38,18 @@ def import_file_offer_word() -> None:
         app.screen_updating = False
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
-        messagebox.showerror("Excel Fehler", f"Es konnte keine Excel-Anwendung gestartet werden: {e}")
+        messagebox.showerror("Excel Fehler", f"Es konnte keine Excel-Anwendung gestartet werden: {e}", parent=root)
         return
 
     # Öffnen des Datei-Dialogs zur Auswahl einer Word-Datei
     file = filedialog.askopenfilename(filetypes=[("Word-Dokument", "*.docx")], title="Bitte Word-Datei auswählen...")
     if not file:
-        messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.")
+        messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.", parent=root)
         return
 
     create_template()
     import_file_offer(file, workbook)
-    messagebox.showinfo("Fertig", "Import von Aktenangebotsformular abgeschlossen.")
+    messagebox.showinfo("Fertig", "Import von Aktenangebotsformular abgeschlossen.", parent=root)
 
 
 def import_file_offer(file_path: str, workbook) -> None:
@@ -57,7 +58,7 @@ def import_file_offer(file_path: str, workbook) -> None:
         ws_target = workbook.sheets[config.CURRENT_OFFER_SHEET_NAME]
         copy_tables(file_path, ws_target)
     except Exception as e:
-        messagebox.showerror("Fehler beim Import", f"Fehler beim Importieren der Datei: {e}")
+        messagebox.showerror("Fehler beim Import", f"Fehler beim Importieren der Datei: {e}", parent=root)
 
 
 def copy_tables(file_path: str, ws_target) -> None:
@@ -73,7 +74,7 @@ def copy_tables(file_path: str, ws_target) -> None:
         word_app = None
         
     except Exception as e:
-        messagebox.showerror("Word-Import Fehler", f"Fehler beim Lesen der Word-Datei: {e}")
+        messagebox.showerror("Word-Import Fehler", f"Fehler beim Lesen der Word-Datei: {e}", parent=root)
 
 
 def read_meta_data_from_doc(word_doc) -> Tuple[str, str, str, str]:
@@ -89,7 +90,7 @@ def read_meta_data_from_doc(word_doc) -> Tuple[str, str, str, str]:
 
         return direction, office, responsible, offer_date
     except Exception as e:
-        messagebox.showerror("Fehler Word", f"Fehler beim Lesen von Metadaten: {e}")
+        messagebox.showerror("Fehler Word", f"Fehler beim Lesen von Metadaten: {e}", parent=root)
         return "", "", "", ""
 
 
@@ -122,7 +123,7 @@ def read_word_table(word_doc) -> List[List[str]]:
             tmp.append(row)
         return tmp
     except Exception as e:
-        messagebox.showerror("Fehler Word Table", f"Fehler beim Lesen der Word-Tabelle: {e}")
+        messagebox.showerror("Fehler Word Table", f"Fehler beim Lesen der Word-Tabelle: {e}", parent=root)
         return []
 
 
@@ -173,7 +174,7 @@ def write_data_to_sheet(ws_target, data_array: List[List[str]],
             ws_target.range(f'A{config.START_DATA_ROW}:E{end_row}').value = out
     
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}", parent=root)
 
 
 def create_template() -> None:
@@ -201,14 +202,14 @@ def create_template() -> None:
         stammdaten_workbook.close()
 
         if not template_path or not os.path.exists(template_path):
-            messagebox.showerror("Fehler", f"Der angegebene Pfad '{template_path}' ist ungültig.")
+            messagebox.showerror("Fehler", f"Der angegebene Pfad '{template_path}' ist ungültig.", parent=root)
             return
         
         # Überprüfen, ob das Arbeitsblatt bereits existiert
         sheet_name = config.CURRENT_OFFER_SHEET_NAME
         if sheet_name in [sheet.name for sheet in workbook.sheets]:
             # Popup zur Bestätigung des Ersetzens anzeigen
-            result = messagebox.askyesno("Bestätigung", f"Das Arbeitsblatt '{sheet_name}' existiert bereits. Möchten Sie es ersetzen?\n\nWarnung: Das Arbeitsblatt wird gelöscht und neu erstellt. Alle vorhandenen Daten gehen verloren.")
+            result = messagebox.askyesno("Bestätigung", f"Das Arbeitsblatt '{sheet_name}' existiert bereits. Möchten Sie es ersetzen?\n\nWarnung: Das Arbeitsblatt wird gelöscht und neu erstellt. Alle vorhandenen Daten gehen verloren.", parent=root)
             if result:
                 workbook.sheets[sheet_name].delete()
             else:
@@ -290,7 +291,7 @@ def create_template() -> None:
         workbook.save()
 
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen des Templates: {e}", parent=root)
 
 
 def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
@@ -325,10 +326,7 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
             )
 
         except Exception as e:
-            messagebox.showerror(
-                "Fehler",
-                f"Fehler beim Erstellen des Bereichs '{config.SELECTION_ASSESMENT_DECISION_NAME}': {e}"
-            )
+            messagebox.showerror("Fehler", f"Fehler beim Erstellen des Bereichs '{config.SELECTION_ASSESMENT_DECISION_NAME}': {e}", parent=root)
 
         # Selektion Bewertungsgrund erstellen
         start_row = end_row + 2
@@ -354,10 +352,7 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
                 )
 
             except Exception as e:
-                messagebox.showerror(
-                    "Fehler",
-                    f"Fehler beim Hinzufügen des Bereichs '{name}': {e}"
-                )
+                messagebox.showerror("Fehler", f"Fehler beim Hinzufügen des Bereichs '{name}': {e}", parent=root)
 
             start_row = end_row + 2
 
@@ -375,7 +370,4 @@ def add_dropdown_to_excel(wb, values: list, conditional_values: list) -> None:
         )
 
     except Exception as e:
-        messagebox.showerror(
-            "Fehler",
-            f"Fehler beim Erstellen der Selektionsbereiche: {e}"
-        )
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Selektionsbereiche: {e}", parent=root)

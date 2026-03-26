@@ -3,26 +3,27 @@ import os
 import re
 from tkinter import filedialog, messagebox, Tk
 from typing import List, Dict, Any
+from app import root
 
 # Versuche, win32com.client zu importieren
 try:
     import win32com.client as win32
 except ImportError as e:
-    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}")
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von win32com.client: {e}", parent=root)
     raise
 
 # Versuche, openpyxl zu importieren
 try:
     import openpyxl
 except ImportError as e:
-    messagebox.showerror("Fehler", f"Fehler beim Importieren von openpyxl: {e}")
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von openpyxl: {e}", parent=root)
     raise
 
 # Versuche, xlwings zu importieren
 try:
     import xlwings as xw
 except ImportError as e:
-    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}")
+    messagebox.showerror("Fehler", f"Fehler beim Importieren von xlwings: {e}", parent=root)
     raise
 
 
@@ -34,7 +35,7 @@ def import_delivery_list_word() -> None:
     # Öffnen des Datei-Dialogs zur Auswahl einer Word-Datei
     file = filedialog.askopenfilename(filetypes=[("Word-Dokument", "*.docx")], title="Bitte Word-Datei auswählen...")
     if not file:
-        messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.")
+        messagebox.showinfo("Abbruch", "Kein Dateipfad ausgewählt. Der Vorgang wird abgebrochen.", parent=root)
         return
 
     doc_props, table_data = read_docx_data(file)
@@ -51,7 +52,7 @@ def import_delivery_list_excel() -> None:
         app.screen_updating
         workbook = app.books[config.DELIVERY_MACRO_FILE_NAME]
     except Exception as e:
-        messagebox.showerror("Fehler", "Excel‑Instanz konnte nicht gefunden werden oder Datei ist nicht offen.")
+        messagebox.showerror("Fehler", "Excel‑Instanz konnte nicht gefunden werden oder Datei ist nicht offen.", parent=root)
         return
 
     try:
@@ -59,7 +60,7 @@ def import_delivery_list_excel() -> None:
         doc_props, table_data = read_excel_data(workbook)
         create_delivery_list(doc_props, table_data)
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Verarbeiten der Abliefererdaten: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Verarbeiten der Abliefererdaten: {e}", parent=root)
 
 
 def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]]) -> None:
@@ -74,7 +75,7 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         exc_file = os.path.abspath(template_rel)
 
         if not os.path.exists(exc_file):
-            messagebox.showerror("Fehler", f"Die Vorlagen‑Datei wurde nicht gefunden:\n{exc_file}")
+            messagebox.showerror("Fehler", f"Die Vorlagen‑Datei wurde nicht gefunden:\n{exc_file}", parent=root)
             return
 
         # Zielordner für das Ablieferungsverzeichnis aus config lesen und sicherstellen, dass der Ordner existiert
@@ -108,9 +109,9 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         # Speichern der Excel-Datei
         workbook.save()
 
-        messagebox.showinfo("Fertig", f"Das Ablieferungsverzeichnis wurde erfolgreich erstellt")
+        messagebox.showinfo("Fertig", f"Das Ablieferungsverzeichnis wurde erfolgreich erstellt", parent=root)
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Excel‑Datei: {e}", parent=root)
 
 
 def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
@@ -180,7 +181,7 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         word.Quit()
     except Exception as e:
         word.Quit()
-        messagebox.showerror("Fehler", f"Fehler beim Lesen der Word-Datei: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Lesen der Word-Datei: {e}", parent=root)
 
     return doc_props, table_data
 

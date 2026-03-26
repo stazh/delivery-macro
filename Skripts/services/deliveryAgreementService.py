@@ -4,6 +4,7 @@ from tkinter import messagebox
 from datetime import datetime
 import shutil
 import config
+from app import root
 
 # Versuche, xlwings zu importieren
 try:
@@ -31,7 +32,7 @@ def create_delivery_agreement() -> None:
         # Vorlagenpfad auslesen und sicherstellen, dass die Datei existiert
         template_path = stammdaten_workbook.sheets[config.DATA_PATH_SHEET_NAME].range(config.DATA_PATH_FIELD_DELIVERY_AGREEMENT).value
         if not template_path or not os.path.exists(template_path):
-            messagebox.showerror("Fehler", f"Ungültiger Vorlagenpfad: {template_path}")
+            messagebox.showerror("Fehler", f"Ungültiger Vorlagenpfad: {template_path}", parent=root)
             return
 
         # Daten importieren
@@ -52,13 +53,13 @@ def create_delivery_agreement() -> None:
         shutil.copy(template_path, word_filename)
         
         if not os.path.exists(word_filename):
-            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {word_filename}")
+            messagebox.showerror("Fehler", f"Die Datei konnte nicht gefunden werden: {word_filename}", parent=root)
             return
 
         # Umwandlung des relativen Pfades in einen absoluten Pfad
         word_filename_abs = os.path.abspath(word_filename)
         if not os.path.exists(word_filename_abs):
-            messagebox.showerror("Fehler", f"Das Ziel-Wortdokument wurde nicht gefunden: {word_filename_abs}")
+            messagebox.showerror("Fehler", f"Das Ziel-Wortdokument wurde nicht gefunden: {word_filename_abs}", parent=root)
             return
 
         # Word-Dokument öffnen und Platzhalter ersetzen
@@ -73,16 +74,16 @@ def create_delivery_agreement() -> None:
             insert_table_data(word, table_data, declined_table_data)
 
         except Exception as e:
-            messagebox.showerror("Fehler", f"Fehler beim Öffnen und Bearbeiten des Word-Dokuments: {e}")
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen und Bearbeiten des Word-Dokuments: {e}", parent=root)
             return
         
         stammdaten_workbook.close()
         word.ActiveDocument.Save()
 
-        messagebox.showinfo("Erfolg", "Die Ablieferungsvereinbarung wurde erfolgreich erstellt.")
+        messagebox.showinfo("Erfolg", "Die Ablieferungsvereinbarung wurde erfolgreich erstellt.", parent=root)
 
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Erstellen der Ablieferungsvereinbarung: {e}", parent=root)
 
 def safe_str(value):
     if value is None:
@@ -217,11 +218,7 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet, document) -> No
 
         # Wenn nichts gefunden wurde -> Abbruch
         if not found:
-            messagebox.showerror(
-                "Fehler",
-                f"Kein Kontakt für '{data['kuerz']}' gefunden."
-            )
-            return
+            messagebox.showerror("Fehler", f"Kürzel vom zuständigen wurde entweder nicht eingetragen oder gefunden: {data["kuerz"]}", parent=root)
 
         replacements = {
             config.KUERZ_PLACEHOLDER: data["kuerz"],
@@ -255,7 +252,7 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet, document) -> No
             document.Bookmarks.Add(book_mark_name, book_mark_range)
 
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter in Word: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Ersetzen der Platzhalter in Word: {e}", parent=root)
 
 
 def insert_table_data(word, table_data, declined_table_data) -> None:
@@ -308,4 +305,4 @@ def insert_table_data(word, table_data, declined_table_data) -> None:
                     find.Parent.Font.Bold = -1
 
     except Exception as e:
-        messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}")
+        messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}" , parent=root)

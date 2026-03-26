@@ -2,7 +2,13 @@ import sys
 import os
 import importlib
 import argparse
+import tkinter as tk
 from tkinter import messagebox
+
+# Globales Root-Fenster für alle MessageBoxen
+root = tk.Tk()
+root.withdraw()
+root.attributes("-topmost", True)
 
 # Aktuelles Arbeitsverzeichnis
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -39,13 +45,13 @@ def execute_command(command: str) -> None:
             func = getattr(module, function_name)  # Funktion aus dem Modul holen
             func()  # Funktion ausführen
         except ModuleNotFoundError as e:
-            messagebox.showerror("Fehler", f"Die Datei '{file_name}.py' wurde im services-Ordner nicht gefunden. Fehler: {e}")
+            messagebox.showerror("Fehler", f"Die Datei '{file_name}.py' wurde im services-Ordner nicht gefunden. Fehler: {e}", parent=root)
         except AttributeError as e:
-            messagebox.showerror("Fehler", f"Die Funktion '{function_name}' wurde in der Datei '{file_name}.py' nicht gefunden. Fehler: {e}")
+            messagebox.showerror("Fehler", f"Die Funktion '{function_name}' wurde in der Datei '{file_name}.py' nicht gefunden. Fehler: {e}", parent=root)
         except Exception as e:
-            messagebox.showerror("Fehler", f"Es ist ein Fehler aufgetreten: {e}")
+            messagebox.showerror("Fehler", f"Es ist ein Fehler aufgetreten: {e}", parent=root)
     else:
-        messagebox.showerror("Fehler", f"Der Befehl '{command}' ist nicht im Mapping definiert.")
+        messagebox.showerror("Fehler", f"Der Befehl '{command}' ist nicht im Mapping definiert.", parent=root)
 
 def main() -> None:
     """Hauptfunktion, die das Kommando aus der Kommandozeile verarbeitet und ausführt."""
@@ -61,9 +67,10 @@ def main() -> None:
         
         # Funktion basierend auf dem Kommando ausführen
         execute_command(args.command)
-
+        root.destroy()
     except Exception as e:
-        messagebox.showerror("Fehler", f'Es ist ein Fehler aufgetreten: {e}')
+        root.destroy()
+        messagebox.showerror("Fehler", f'Es ist ein Fehler aufgetreten: {e}', parent=root)
 
 # Startet das Skript, wenn es direkt ausgeführt wird
 if __name__ == '__main__':
