@@ -218,7 +218,7 @@ def replace_placeholders_in_doc(word, data: dict, contact_sheet, document) -> No
 
         # Wenn nichts gefunden wurde -> Abbruch
         if not found:
-            messagebox.showerror("Fehler", f"Kürzel vom zuständigen wurde entweder nicht eingetragen oder gefunden: {data["kuerz"]}", parent=root)
+            messagebox.showerror("Fehler", f"Kürzel vom zuständigen wurde entweder nicht eingetragen oder gefunden: {data['kuerz']}", parent=root)
 
         replacements = {
             config.KUERZ_PLACEHOLDER: data["kuerz"],
