@@ -4,6 +4,7 @@ import importlib
 import argparse
 import tkinter as tk
 from tkinter import messagebox
+from threading import Thread
 
 # Globales Root-Fenster für alle MessageBoxen
 root = tk.Tk()
@@ -36,6 +37,36 @@ COMMANDS = {
     'import-delivery-list-excel': ('deliveryListService', 'import_delivery_list_excel', 'Importiert die Daten aus Angebot_aktuell und erstellt eine Excel-Datei für das Ablieferungsverzeichnis'),
 }
 
+def run_with_loading(command: str):
+    """Zeigt ein Ladefenster an, während die angegebene Funktion im Hintergrund ausgeführt wird."""
+    rootLoading = tk.Toplevel(root)
+    rootLoading.title("Loading")
+    rootLoading.geometry("250x100")
+    rootLoading.attributes("-topmost", True)
+    rootLoading.resizable(False, False)
+    tk.Label(rootLoading, text="Bitte warten...").pack(expand=True)
+
+    root.update_idletasks()
+    rootLoading.update_idletasks()
+    rootLoading.deiconify()
+
+    task_done = {'finished': False}
+
+    def task():
+        execute_command(command)
+        task_done['finished'] = True
+
+    Thread(target=task, daemon=True).start()
+
+    def check_task():
+        if task_done['finished']:
+            rootLoading.destroy()
+        else:
+            rootLoading.after(100, check_task)
+
+    check_task()
+    rootLoading.mainloop()
+
 def execute_command(command: str) -> None:
     """Führt das angegebene Kommando aus, indem die zugehörige Funktion importiert und aufgerufen wird."""
     if command in COMMANDS:
@@ -66,7 +97,7 @@ def main() -> None:
         args = parser.parse_args()
         
         # Funktion basierend auf dem Kommando ausführen
-        execute_command(args.command)
+        run_with_loading(args.command)
         root.destroy()
     except Exception as e:
         root.destroy()
