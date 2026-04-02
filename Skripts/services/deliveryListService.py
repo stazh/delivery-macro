@@ -133,18 +133,24 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         for i in range(2, table.Rows.Count + 1):
             row = table.Rows(i)
             first_column_data = row.Cells(1).Range.Text.strip()
-            third_column_data = row.Cells(3).Range.Text.strip()
+            
+            # Prüfen, ob die Zeile nur eine Zelle hat
+            if row.Cells.Count == 1:
+                third_column_data = ""
+            else:
+                third_column_data = row.Cells(3).Range.Text.strip()
+            
             raw_data.append([first_column_data, third_column_data])
 
             # Lfm und GB aus der ersten Spalte extrahieren
             lfm_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM, first_column_data))
             gb_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB, first_column_data))
 
-            if len(lfm_matches) > 0:
+            if lfm_matches:
                 lfm_value = lfm_matches[-1].group(0).replace(" Lfm", "")
                 ang_lfm += round(float(lfm_value), 2)
 
-            if len(gb_matches) > 0:
+            if gb_matches:
                 gb_value = gb_matches[-1].group(0).replace(" GB", "")
                 ang_gb += round(float(gb_value), 2)
 

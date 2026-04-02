@@ -303,6 +303,18 @@ def insert_table_data(word, table_data, declined_table_data) -> None:
 
                 if find.Execute():
                     find.Parent.Font.Bold = -1
+                    
+        for row in acceptedFiles.Rows:
+            # Überspringe ggf. Kopfzeile
+            first_cell_text = row.Cells(1).Range.Text.strip("\r\x07")
+            second_cell_text = row.Cells(2).Range.Text.strip("\r\x07")
+            third_cell_text = row.Cells(3).Range.Text.strip("\r\x07")
+
+            if first_cell_text and not second_cell_text and not third_cell_text:
+                # Zellen verbinden
+                row.Cells(1).Merge(row.Cells(3))
+                merged_range = row.Cells(1).Range
+                merged_range.Font.Bold = True
 
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Einfügen der Tabellenwerte in Word: {e}" , parent=root)
