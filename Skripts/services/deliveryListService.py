@@ -219,7 +219,7 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
                 medium = medium_match.group(1).strip()
 
         if zeitraum == '':
-            table_data.append([inhalt, '', '', '', ''])
+            table_data.append([inhalt.strip().replace('\n', '').replace('\r', '').replace('\x07', ''), '', '', '', ''])
             continue
 
         # Bereinige den Text in row[1]
@@ -327,7 +327,7 @@ def replace_placeholders_in_excel(ws, doc_props: Dict[str, Any]) -> None:
 
 def insert_table_data(ws, table_data: List[List[str]]) -> None:
     """Fügt die Tabellen-Daten in die Excel-Datei ein."""
-    row_start = 24
+    row_start = config.DELIVERY_LIST_START_DATA_ROW
     for row in table_data:
         cell_range = ws.range(f'B{row_start}:F{row_start}')
         cell_range.value = row

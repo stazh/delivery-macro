@@ -38,7 +38,6 @@ COMMANDS = {
 }
 
 def run_with_loading(command: str):
-    """Zeigt ein Ladefenster an, während die angegebene Funktion im Hintergrund ausgeführt wird."""
     rootLoading = tk.Toplevel(root)
     rootLoading.title("Loading")
     rootLoading.geometry("250x100")
@@ -50,22 +49,9 @@ def run_with_loading(command: str):
     rootLoading.update_idletasks()
     rootLoading.deiconify()
 
-    task_done = {'finished': False}
+    execute_command(command)
 
-    def task():
-        execute_command(command)
-        task_done['finished'] = True
-
-    Thread(target=task, daemon=True).start()
-
-    def check_task():
-        if task_done['finished']:
-            rootLoading.destroy()
-        else:
-            rootLoading.after(100, check_task)
-
-    check_task()
-    rootLoading.mainloop()
+    rootLoading.destroy()
 
 def execute_command(command: str) -> None:
     """Führt das angegebene Kommando aus, indem die zugehörige Funktion importiert und aufgerufen wird."""
@@ -99,10 +85,13 @@ def main() -> None:
         # Funktion basierend auf dem Kommando ausführen
         run_with_loading(args.command)
         root.destroy()
+        return 1
     except Exception as e:
         root.destroy()
         messagebox.showerror("Fehler", f'Es ist ein Fehler aufgetreten: {e}', parent=root)
+        return 0
 
 # Startet das Skript, wenn es direkt ausgeführt wird
 if __name__ == '__main__':
-    main()
+    ret_code = main()
+    sys.exit(ret_code)
