@@ -126,7 +126,6 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
         raw_data = []
         doc = word.ActiveDocument
         table = doc.Tables[2]
-        declinedTable = doc.Tables[3]
         ang_lfm = 0
         ang_gb = 0
 
@@ -154,21 +153,23 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
                 gb_value = gb_matches[-1].group(0).replace(" GB", "")
                 ang_gb += round(float(gb_value), 2)
 
-        for i in range(2, declinedTable.Rows.Count + 1):
-            row = declinedTable.Rows(i)
-            second_column_data = row.Cells(2).Range.Text.strip()
+        if doc.Tables.Count >= 4:
+            declinedTable = doc.Tables[3]
+            for i in range(2, declinedTable.Rows.Count + 1):
+                row = declinedTable.Rows(i)
+                second_column_data = row.Cells(2).Range.Text.strip()
 
-            # Lfm und GB aus der zweiten Spalte extrahieren
-            lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', second_column_data)
-            gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', second_column_data)
+                # Lfm und GB aus der zweiten Spalte extrahieren
+                lfm_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM}', second_column_data)
+                gb_match = re.search(rf'{config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB}', second_column_data)
 
-            if lfm_match:
-                lfm_value = lfm_match.group(0).replace(" Lfm", "")
-                ang_lfm += round(float(lfm_value), 2)
+                if lfm_match:
+                    lfm_value = lfm_match.group(0).replace(" Lfm", "")
+                    ang_lfm += round(float(lfm_value), 2)
 
-            if gb_match:
-                gb_value = gb_match.group(0).replace(" GB", "")
-                ang_gb += round(float(gb_value), 2)
+                if gb_match:
+                    gb_value = gb_match.group(0).replace(" GB", "")
+                    ang_gb += round(float(gb_value), 2)
 
         # Dokument-Eigenschaften zusammenstellen
         doc_props = {
