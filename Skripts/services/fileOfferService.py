@@ -164,14 +164,20 @@ def write_data_to_sheet(ws_target, data_array: List[List[str]],
         
         out = []
         for row in data_array:
-            if not any(row[1:5]):
+            if not row[0]:
                 continue
 
-            out.append([row[0], row[1], row[2] or "", row[3] or "", row[4].replace(",", ";") if row[4] else ""])
-        
+            out.append([
+                row[0],
+                row[1] or "",
+                row[2] or "",
+                row[3] or "",
+                row[4].replace(",", ";") if row[4] else ""
+            ])
+
         if out:
             end_row = config.START_DATA_ROW + len(out) - 1
-            ws_target.range(f'A{config.START_DATA_ROW}:E{end_row}').value = out
+            ws_target.range(f"A{config.START_DATA_ROW}:E{end_row}").value = out
     
     except Exception as e:
         messagebox.showerror("Fehler", f"Fehler beim Schreiben der Daten: {e}", parent=root)
@@ -214,7 +220,7 @@ def create_template() -> None:
                 workbook.sheets[sheet_name].delete()
             else:
                 return
-        
+            
         # Die Vorlage öffnen und das Arbeitsblatt kopieren
         template_workbook = xw.Book(template_path)
         template_sheet = template_workbook.sheets[sheet_name]
