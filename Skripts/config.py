@@ -81,10 +81,10 @@ DEFAULT_VALUE_LFM_GB = "0"
 # ------------------------
 # 7. Reguläre Ausdrücke
 # ------------------------
-REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR = ",\s*(\d{4}(?:\s*[-+]\s*\d{4})*)"
-REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM = "\(([^)]+)\)(?!.*\()"
-REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB = "(\d+(\.\d+)?)\s*GB"
-REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM = "(\d+(\.\d+)?)\s*Lfm"
+REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR = r",\s*(?:ca\.?\s*)?\d{4}(?:\s*[-+]\s*(?:ca\.?\s*)?\d{4})*"
+REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_MEDIUM = r"\(([^)]+)\)(?!.*\()"
+REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB = r"(\d+(\.\d+)?)\s*GB"
+REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM = r"(\d+(\.\d+)?)\s*Lfm"
 
 # ------------------------
 # 8. Nachrichten

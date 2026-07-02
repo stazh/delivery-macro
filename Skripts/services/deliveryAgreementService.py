@@ -1,6 +1,6 @@
 import os
 import re
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from datetime import datetime
 import shutil
 import config
@@ -43,13 +43,23 @@ def create_delivery_agreement() -> None:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Sicherstellen, ob die Datei bereits existiert, bevor die Word-Datei erstellt wird
+        # Benutzer nach dem Dateinamen fragen
+        user_input = simpledialog.askstring("Dateiname", "Bitte den Dateinamen eingeben:", parent=root)
+        word_filename = os.path.join(output_folder, f"{user_input}.docx")
+
+        # Sicherstellen, dass die Datei nicht überschrieben wird
         document_number = 1
-        word_filename = os.path.join(output_folder, f"{document_number:02d}_{config.CREATED_DELIVERY_AGREEMENT_FILE_NAME}")
+
+        # Wenn der Benutzer nichts eingibt, generischen Namen verwenden
+        if not user_input:
+            user_input = config.CREATED_DELIVERY_AGREEMENT_FILE_NAME
+            word_filename = os.path.join(output_folder, f"{document_number:02d}_{user_input}")
+
         while os.path.isfile(word_filename):
             document_number += 1
-            word_filename = os.path.join(output_folder, f"{document_number:02d}_{config.CREATED_DELIVERY_AGREEMENT_FILE_NAME}")
+            word_filename = os.path.join(output_folder, f"{document_number:02d}_{user_input}")
 
+        # Template kopieren
         shutil.copy(template_path, word_filename)
         
         if not os.path.exists(word_filename):
@@ -100,6 +110,7 @@ def safe_float(value, ndigits=2):
         return config.DEFAULT_VALUE_LFM_GB
     if isinstance(value, (int, float)):
         return round(value, ndigits)
+
     try:
         return round(float(value), ndigits)
     except (ValueError, TypeError):

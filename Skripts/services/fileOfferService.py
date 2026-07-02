@@ -64,9 +64,9 @@ def import_file_offer(file_path: str, workbook) -> None:
 def copy_tables(file_path: str, ws_target) -> None:
     """Kopiert die Tabellen aus einer Word-Datei in das Excel-Arbeitsblatt."""
     try:
-        word_app = win32comClient.GetObject(None, "Word.Application") if not win32comClient.Dispatch("Word.Application") else win32comClient.Dispatch("Word.Application")
+        word_app = win32comClient.DispatchEx("Word.Application")
         word_app.Visible = False
-        word_doc = word_app.Documents.Open(file_path, ReadOnly=True)
+        word_doc = word_app.Documents.Open(os.path.abspath(file_path))
         direction, office, responsible, offer_date = read_meta_data_from_doc(word_doc)
         data_array = read_word_table(word_doc)
         write_data_to_sheet(ws_target, data_array, direction, office, responsible, offer_date)
@@ -80,7 +80,7 @@ def copy_tables(file_path: str, ws_target) -> None:
 def read_meta_data_from_doc(word_doc) -> Tuple[str, str, str, str]:
     """Liest die Metadaten aus einer Word-Datei."""
     try:
-        full_text = word_doc.Content.text.replace('\r\n', '\r')
+        full_text = word_doc.Content.Text.replace('\r\n', '\r')
         meta_lines = full_text.split('\r')
 
         direction = safe_extract(meta_lines, 1, config.WORD_DIRECTION_TEXT)
@@ -130,7 +130,7 @@ def read_word_table(word_doc) -> List[List[str]]:
 def safe_get_cell_text(word_table, r: int, c: int) -> str:
     """Sicheres Abrufen des Textes aus einer bestimmten Zelle der Word-Tabelle."""
     try:
-        text = word_table.Cell(r, c).Range.text
+        text = word_table.Cell(r, c).Range.Text
         return clean_string(text)
     except:
         return ""

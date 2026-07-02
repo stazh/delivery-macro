@@ -1,7 +1,7 @@
 import config
 import os
 import re
-from tkinter import filedialog, messagebox, Tk
+from tkinter import filedialog, messagebox, Tk, simpledialog
 from typing import List, Dict, Any
 from app import root
 
@@ -83,8 +83,19 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Der Name der Ablieferungsverzeichnis-Datei aus config und sicherstellen, dass die Datei nicht bereits existiert
+        # Benutzer nach dem Dateinamen fragen
+        user_input = simpledialog.askstring("Dateiname", "Bitte den Dateinamen eingeben:", parent=root)
+        exc_file_path = os.path.join(output_folder, f"{user_input}.xlsx")
+
+        # Sicherstellen, dass die Datei nicht überschrieben wird
         document_number = 1
+
+        # Wenn der Benutzer nichts eingibt, generischen Namen verwenden
+        if not user_input:
+            user_input = config.CREATED_DELIVERY_AGREEMENT_FILE_NAME
+            exc_file_path = os.path.join(output_folder, f"{document_number:02d}_{user_input}")
+
+        # Der Name der Ablieferungsverzeichnis-Datei aus config und sicherstellen, dass die Datei nicht bereits existiert
         exc_file_path = os.path.join(output_folder, f"{document_number:02d}_{config.DELIVERY_LIST_FILE_NAME}")
         while os.path.isfile(exc_file_path):
             document_number += 1
@@ -117,34 +128,28 @@ def create_delivery_list(doc_props: Dict[str, Any], table_data: List[List[str]])
 def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
     """Liest die Daten aus einer Word-Datei."""
     word = win32.DispatchEx("Word.Application")
-    word.visible = False
+    word.Visible = False
 
     try:
         doc = word.Documents.Open(os.path.abspath(file_path))
-
         table_data = []
         raw_data = []
-        doc = word.ActiveDocument
-        table = doc.Tables[2]
+        table = doc.Tables(3)
         ang_lfm = 0
         ang_gb = 0
-
         for i in range(2, table.Rows.Count + 1):
             row = table.Rows(i)
             first_column_data = row.Cells(1).Range.Text.strip()
-            
             # Prüfen, ob die Zeile nur eine Zelle hat
             if row.Cells.Count == 1:
                 third_column_data = ""
             else:
                 third_column_data = row.Cells(3).Range.Text.strip()
-            
-            raw_data.append([first_column_data, third_column_data])
-
+            if row.Cells.Count == 1 or row.Cells(2).Range.Text.startswith("keine Übernahme") == False:
+                raw_data.append([first_column_data, third_column_data])
             # Lfm und GB aus der ersten Spalte extrahieren
             lfm_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_LFM, first_column_data))
             gb_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_GB, first_column_data))
-
             if lfm_matches:
                 lfm_value = lfm_matches[-1].group(0).replace(" Lfm", "")
                 ang_lfm += round(float(lfm_value), 2)
@@ -154,7 +159,7 @@ def read_docx_data(file_path: str) -> tuple[Dict[str, Any], List[List[str]]]:
                 ang_gb += round(float(gb_value), 2)
 
         if doc.Tables.Count >= 4:
-            declinedTable = doc.Tables[3]
+            declinedTable = doc.Tables(4)
             for i in range(2, declinedTable.Rows.Count + 1):
                 row = declinedTable.Rows(i)
                 second_column_data = row.Cells(2).Range.Text.strip()
@@ -205,7 +210,6 @@ def convert_word_table_data(raw_data: List[List[str]]) -> List[List[str]]:
 
         # Jahr und Medium extrahieren
         year_matches = list(re.finditer(config.REGEX_WORD_DELIVERY_AGREEMENT_SEARCH_YEAR, row[0]))
-
         if year_matches:
             last_year_match = year_matches[-1]
 
