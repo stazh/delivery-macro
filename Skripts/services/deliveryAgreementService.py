@@ -108,11 +108,12 @@ def safe_str(value):
 def safe_float(value, ndigits=2):
     if value is None:
         return config.DEFAULT_VALUE_LFM_GB
+    roundValue = value.replace(',', '.') if isinstance(value, str) else value
     if isinstance(value, (int, float)):
-        return round(value, ndigits)
+        return round(roundValue, ndigits)
 
     try:
-        return round(float(value), ndigits)
+        return round(float(roundValue), ndigits)
     except (ValueError, TypeError):
         return config.DEFAULT_VALUE_LFM_GB
 
@@ -153,7 +154,7 @@ def import_delivery_data(workbook) -> dict:
             "ueber_gb": safe_float(sheet.range(f"K{row}").value)
         }
 
-        if row_data['lfm'] == config.DEFAULT_VALUE_LFM_GB and row_data['gb'] == config.DEFAULT_VALUE_LFM_GB:
+        if row_data['lfm'] == config.DEFAULT_VALUE_LFM_GB and row_data['gb'] == config.DEFAULT_VALUE_LFM_GB and (row_data['zeitraum'] == '' or row_data['zeitraum'] is None) and (row_data['medium'] == '' or row_data['medium'] is None):
             table_data.append([row_data['inhalt'], '', ''])
             row += 1
             continue
